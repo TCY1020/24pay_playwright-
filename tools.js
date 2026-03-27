@@ -1,10 +1,12 @@
+import telegramTools from './telegram.js'
+
 const tools = {
     login: async (page) => {
         await page.goto('https://ptrcqps9.2424ph.com/#/login');
         console.log('頁面標題:', await page.title());
         console.log('請手動登入')
 
-        await page.waitForSelector('.aminui-wrapper')
+        await page.waitForSelector('.aminui-wrapper', { timeout: 300000 })
         console.log('登入成功')
     },
     gotoUrl: async (page, url) => {
@@ -33,7 +35,7 @@ const tools = {
         await popper.nth(9).click()
     },
 
-    getGcashBalanceList: async(page) =>{
+    checkBalancePageRefresh: async(page) =>{
         // 搜尋前：先記錄表格狀態
         const rows = page.locator('tbody tr');
         const beforeCount = await rows.count();
@@ -55,35 +57,41 @@ const tools = {
         },
         { beforeCount, beforeFirstName }
         );
+    },
 
-        // ✅ 這裡再跑你的 $$eval
+    getGcashBalanceList: async (page)=>{
         const result = await page.$$eval('tbody tr', rows => {
-        return rows
-            .map(row => {
-            const tds = row.querySelectorAll('td');
+            return rows
+                .map(row => {
+                const tds = row.querySelectorAll('td');
+    
+                let name = tds[2]?.innerText.trim();
+                const balanceText = tds[3]?.innerText;
+    
+                if (name === '') {
+                    name = '總共';
+                } else if (!name || name.split('')[0] !== 'G') {
+                    return null;
+                }
+    
+                return {
+                    name,
+                    balance: Number(balanceText.replace(/[^0-9.-]/g, '')),
+                };
+                })
+                .filter(item => item !== null);
+            });
+    
+    
+            console.log('總數:', result.length)
+            console.log('全部的Gcash',result)
+            
+            return result
+    },
 
-            let name = tds[2]?.innerText.trim();
-            const balanceText = tds[3]?.innerText;
-
-            if (name === '') {
-                name = '總共';
-            } else if (!name || name.split('')[0] !== 'G') {
-                return null;
-            }
-
-            return {
-                name,
-                balance: Number(balanceText.replace(/[^0-9.-]/g, '')),
-            };
-            })
-            .filter(item => item !== null);
-        });
-
-
-        console.log('總數:', result.length)
-        console.log('全部的Gcash',result)
-        
-        return result
+    reSearch: async(page) => {
+        await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click();
+        await page.waitForTimeout(2000);
     },
     balanceListFilter: ({balanceList, lessAmount}) => {
         balanceList = balanceList.filter(item =>{
@@ -92,6 +100,33 @@ const tools = {
 
         return balanceList
         
+    },
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+
+    checkAndNotify: async({page, groupChatId}) =>{
+        const gcashBalanceList = await tools.getGcashBalanceList(page)
+        const gcashBalanceTooLowAccountList = tools.balanceListFilter({
+            balanceList: gcashBalanceList,
+            lessAmount: 3000,
+          })
+        
+          let message
+          if(gcashBalanceTooLowAccountList.length > 0){
+            message = [
+                `低於 3000 的帳戶：(${gcashBalanceTooLowAccountList.length} 筆)`,
+                ...gcashBalanceTooLowAccountList.map((x) => `- ${x.name}: ${x.balance}`),
+              ].join('\n');
+          }else{
+            message = `低於 3000 的帳戶：(0 筆)`
+          }
+
+          if(groupChatId){
+            try {
+                await telegramTools.sendGroupMessage(groupChatId, message);
+              } catch (err) {
+                console.error('[telegram] 傳送群組訊息失敗:', err?.message ?? err);
+              }
+          }
     }
 } 
 
