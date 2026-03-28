@@ -28,15 +28,15 @@ const browser = await chromium.launch({ headless: true })
 const context = await browser.newContext({ storageState: authJsonPath })
 const page = await context.newPage()
 await tools.gotoUrl(page, 'https://ptrcqps9.2424ph.com/#/user_system/user_account')
-await tools.selectGcashWap(page)
-await tools.checkBalancePageRefresh(page)
 
 const groupChatId = process.env.TELEGRAM_GROUP_CHAT_ID || config.TELEGRAM_GROUP_CHAT_ID;
 
 await tools.checkAndNotify({page,groupChatId})
 
+const researchIntervalMs = process.env.RESEARCH_INTERVAL_MS || config.RESEARCH_INTERVAL_MS
+
 while (true) {
-  await tools.sleep(config.RESEARCH_INTERVAL_MS)
+  await tools.sleep(researchIntervalMs)
 
   try {
     await tools.reSearch(page)

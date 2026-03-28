@@ -14,16 +14,18 @@ const tools = {
         console.log('跳轉成功到頁面:', url);
     },
 
-    selectGcashWap: async (page) => {
+    selectGcashWap: async ({page, channelName}) => {
         //篩選
         // 代收狀態: 選擇 開啟
         const collectionStatusEl = page.locator('.sc-select-filter__item-options').nth(0)
         await collectionStatusEl.locator('li', { hasText: '开启' }).click()
 
+        channelName = new RegExp(`^${channelName}$`) 
+
         // 通道名稱: 選擇 GcashWap
         await page.locator('.el-select').nth(0).click()
         const chooseBankEl = page.locator('.el-scrollbar__view.el-select-dropdown__list').nth(0)
-        await chooseBankEl.locator('.el-select-dropdown__item', { hasText: /^GcashWap$/ }).click()
+        await chooseBankEl.locator('.el-select-dropdown__item', { hasText: channelName }).click()
 
         // 一頁顯示量: 選擇 200條/頁
         const wrappers = page.locator('.el-input__wrapper');
@@ -59,40 +61,48 @@ const tools = {
         );
     },
 
-    getGcashBalanceList: async (page)=>{
-        const result = await page.$$eval('tbody tr', rows => {
-            return rows
-                .map(row => {
-                const tds = row.querySelectorAll('td');
+    getBalanceList: async ({ page, accoutFirstWord = 'G' }) => {
+        const result = await page.$$eval(
+            'tbody tr',
+            (rows, accoutFirstWord) => {
+                return rows
+                    .map(row => {
+                        const tds = row.querySelectorAll('td');
     
-                let name = tds[2]?.innerText.trim();
-                const balanceText = tds[3]?.innerText;
+                        // ⭐ 防呆：欄位不夠直接跳過
+                        if (tds.length < 4) return null;
     
-                if (name === '') {
-                    name = '總共';
-                } else if (!name || name.split('')[0] !== 'G') {
-                    return null;
-                }
+                        let name = tds[2]?.innerText?.trim();
+                        let balanceText = tds[3]?.innerText?.trim();
     
-                return {
-                    name,
-                    balance: Number(balanceText.replace(/[^0-9.-]/g, '')),
-                };
-                })
-                .filter(item => item !== null);
-            });
+                        // ⭐ 再防一次
+                        if (!balanceText) return null;
     
+                        if (!name) {
+                            name = '總共';
+                        } else if (name[0] !== accoutFirstWord) {
+                            return null;
+                        }
     
-            console.log('總數:', result.length)
-            console.log('全部的Gcash',result)
-            
-            return result
+                        return {
+                            name,
+                            balance: Number(
+                                balanceText.replace(/[^0-9.-]/g, '')
+                            ),
+                        };
+                    })
+                    .filter(Boolean); // ⭐ 更簡潔
+            },
+            accoutFirstWord
+        );
+    
+        return result;
     },
-
     reSearch: async(page) => {
         await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click();
         await page.waitForTimeout(2000);
     },
+
     balanceListFilter: ({balanceList, lessAmount}) => {
         balanceList = balanceList.filter(item =>{
            return item.name !== '總共' && item.balance < lessAmount
@@ -101,23 +111,45 @@ const tools = {
         return balanceList
         
     },
+
+    getGcashTooLowBalanceList: async ({page, lessAmount = 3000 }) =>{
+        await tools.selectGcashWap({page, channelName:'GcashWap'})
+        await tools.checkBalancePageRefresh(page)
+        const gcashBalanceList = await tools.getBalanceList({page, accoutFirstWord:'G'})
+        const gcashBalanceTooLowAccountList = tools.balanceListFilter({
+            balanceList: gcashBalanceList,
+            lessAmount,
+          })
+
+          return gcashBalanceTooLowAccountList
+    },
+
+    getPayMayaAllAccountBalance: async (page) => {
+        await tools.selectGcashWap({page, channelName:'PayMaya'})
+        await tools.checkBalancePageRefresh(page)
+        const balanceList = await tools.getBalanceList({page, accoutFirstWord:'M'})
+        console.log('payMaya資料',balanceList)
+
+        const payMayaAllAccountBalance = balanceList.filter(item => item.name === '總共')[0]
+
+        return payMayaAllAccountBalance
+    },
+
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 
     checkAndNotify: async({page, groupChatId}) =>{
-        const gcashBalanceList = await tools.getGcashBalanceList(page)
-        const gcashBalanceTooLowAccountList = tools.balanceListFilter({
-            balanceList: gcashBalanceList,
-            lessAmount: 3000,
-          })
+        const gcashBalanceTooLowAccountList = await tools.getGcashTooLowBalanceList({page, lessAmount: 3000})
+        const payMayaAllAccountBalance = await tools.getPayMayaAllAccountBalance(page)
         
           let message
           if(gcashBalanceTooLowAccountList.length > 0){
             message = [
-                `低於 3000 的帳戶：(${gcashBalanceTooLowAccountList.length} 筆)`,
+                `Gcash低於 3000 的帳戶：(${gcashBalanceTooLowAccountList.length} 筆)`,
                 ...gcashBalanceTooLowAccountList.map((x) => `- ${x.name}: ${x.balance}`),
-              ].join('\n');
+                `PayMaya總餘: ${payMayaAllAccountBalance.balance}`
+              ].join('\n')
           }else{
-            message = `低於 3000 的帳戶：(0 筆)`
+            message = `Gcash低於 3000 的帳戶：(0 筆) \n PayMaya總餘: ${payMayaAllAccountBalance.balance}`
           }
 
           if(groupChatId){
