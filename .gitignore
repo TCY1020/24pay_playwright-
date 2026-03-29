@@ -1,3 +1,4 @@
 node_modules/
 config.json
-auth.json
+jili_auth.json
+24pay_auth.json

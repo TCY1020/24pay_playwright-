@@ -1,15 +1,27 @@
 import telegramTools from './telegram.js'
 
 const tools = {
-    login: async (page) => {
-        await page.goto('https://ptrcqps9.2424ph.com/#/login');
+    login: async ({page,backstage}) => {
+        let url
+        let checkClass 
+        console.log(backstage)
+        if(backstage === '24pay'){
+            url ='https://www.24pay.sbs/home/login'
+            checkClass = '.container'
+        } else if (backstage === 'jili'){
+            url = 'https://ptrcqps9.2424ph.com/#/login'
+            checkClass = '.aminui-wrapper'
+        }
+        console.log(url)
+        await page.goto(url);
         console.log('頁面標題:', await page.title());
         console.log('請手動登入')
 
-        await page.waitForSelector('.aminui-wrapper', { timeout: 300000 })
+        await page.waitForSelector(checkClass, { timeout: 300000 })
         console.log('登入成功')
     },
-    gotoUrl: async (page, url) => {
+
+    gotoUrl: async ({page, url}) => {
         await page.goto(url);
         console.log('跳轉成功到頁面:', url);
     },

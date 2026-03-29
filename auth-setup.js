@@ -9,16 +9,18 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import tools from './tools.js';
+
+const backstage = process.env.BACKSTAGE
 const storageStatePath = path.resolve(
   process.cwd(),
-  process.env.PLAYWRIGHT_STORAGE_STATE || 'auth.json'
+   `${backstage}_auth.json`
 );
-console.log(`將儲存登入狀態至: ${storageStatePath}`);
+console.log(`將 ${backstage}_auth.json 儲存登入狀態至: ${storageStatePath}`);
 const browser = await chromium.launch({ headless: false });
 const context = await browser.newContext();
 const page = await context.newPage();
 try {
-  await tools.login(page);
+  await tools.login({page,backstage});
   await fs.promises.mkdir(path.dirname(storageStatePath), { recursive: true });
   await context.storageState({ path: storageStatePath });
   console.log('已寫入 storageState，可把此檔放到伺服器並以 HEADLESS=1 執行主程式。');
