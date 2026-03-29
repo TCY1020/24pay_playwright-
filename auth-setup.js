@@ -11,6 +11,7 @@ import path from 'path';
 import tools from './tools.js';
 
 const backstage = process.env.BACKSTAGE
+
 const storageStatePath = path.resolve(
   process.cwd(),
    `${backstage}_auth.json`

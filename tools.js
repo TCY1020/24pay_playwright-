@@ -1,29 +1,39 @@
 import telegramTools from './telegram.js'
+import fs from 'fs';
+import path from 'path';
 
 const tools = {
-    login: async ({page,backstage}) => {
+    login: async ({page, backstage = "jili", account}) => {
         let url
-        let checkClass 
         console.log(backstage)
-        if(backstage === '24pay'){
-            url ='https://www.24pay.sbs/home/login'
-            checkClass = '.container'
-        } else if (backstage === 'jili'){
+        const config = tools.getConfig()
+        if (backstage === 'jili'){
             url = 'https://ptrcqps9.2424ph.com/#/login'
-            checkClass = '.aminui-wrapper'
+            account = config.ACCOUNT_jili
         }
-        console.log(url)
         await page.goto(url);
-        console.log('頁面標題:', await page.title());
-        console.log('請手動登入')
+        console.log('請手動登入');
 
-        await page.waitForSelector(checkClass, { timeout: 300000 })
-        console.log('登入成功')
+        await page.waitForSelector(`text=${account}`, { timeout: 300000 })
+        console.log(`${backstage} 登入成功`)
     },
 
     gotoUrl: async ({page, url}) => {
         await page.goto(url);
-        console.log('跳轉成功到頁面:', url);
+    },
+
+    getConfig: () =>{
+        const configPath = path.join(process.cwd(), 'config.json')
+        let config = {}
+        try{
+            if(fs.existsSync(configPath)){
+                config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
+            }
+        }catch(err){
+            console.error('[config] 讀取 config.json 失敗，改用 .env', err?.message)
+        }
+
+        return config
     },
 
     selectGcashWap: async ({page, channelName}) => {
@@ -140,7 +150,6 @@ const tools = {
         await tools.selectGcashWap({page, channelName:'PayMaya'})
         await tools.checkBalancePageRefresh(page)
         const balanceList = await tools.getBalanceList({page, accoutFirstWord:'M'})
-        console.log('payMaya資料',balanceList)
 
         const payMayaAllAccountBalance = balanceList.filter(item => item.name === '總共')[0]
 

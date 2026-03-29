@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import tools from './tools.js';
 import telegramTools from './telegram.js'
+import {generate} from 'otplib'
 import path from 'path'
 import fs from 'fs'
 
@@ -8,26 +9,18 @@ import fs from 'fs'
 // =====================
 // 🔧 載入設定檔（config.json fallback to .env）
 // =====================
-const configPath = path.join(process.cwd(), 'config.json')
-let config = {}
-try{
-  if(fs.existsSync(configPath)){
-    config = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-  }
-}catch(err){
-  console.error('[config] 讀取 config.json 失敗，改用 .env', err?.message)
-}
+const config = tools.getConfig()
 
 // =====================
 // 🔐 檢查登入狀態（auth.json 必須存在）
 // =====================
-const authJsonPath24pay = path.join(process.cwd(), '24pay_auth.json')
-const hasStorageState24pay = fs.existsSync(authJsonPath24pay)
 const authJsonPathJili = path.join(process.cwd(), 'jili_auth.json')
 const hasAuthJsonPathJili = fs.existsSync(authJsonPathJili)
 
-if ( !hasAuthJsonPathJili || !hasStorageState24pay ) {
-  console.error('找不到 auth.json。請先在本機執行: npm run auth-setup，產生登入狀態後再執行 npm run dev')
+if ( !hasAuthJsonPathJili ) {
+  console.error(`
+    Jili憑證${hasAuthJsonPathJili? '已找到' :'未找到'}\n
+    請先在本機執行: npm run auth-setup，產生登入狀態後再執行 npm run dev`)
   process.exit(1)
 }
 
@@ -46,20 +39,28 @@ const groupChatId = process.env.TELEGRAM_GROUP_CHAT_ID || config.TELEGRAM_GROUP_
 
 const browser = await chromium.launch({ headless: true })
 
-// 24pay部分
-const _24payContext = await browser.newContext({ storageState: authJsonPath24pay })
-const _24payPage  = await _24payContext.newPage()
-await tools.gotoUrl({page:_24payPage, url:'https://www.24pay.sbs/home/index'})
+// 24pay
+const _24payContext= await browser.newContext()
+const _24payPage = await _24payContext.newPage()
+const secret = config.SECRET_24PAY
+const token = await generate({secret})
+await _24payPage.goto('https://www.24pay.sbs/home/login')
+await _24payPage.locator('[name="Name"]').type(config.ACCOUNT_24PAY, { delay: 100 })
+await _24payPage.locator('[name="Password"]').type(config.PASSWORD_24PAY, { delay: 100 })
+await _24payPage.locator('[name="GoogleVerificationCode"]').type(token, { delay: 100 })
+await _24payPage.locator('.loginin').click()
+try{
+  await _24payPage.waitForSelector(`text=${config.ACCOUNT_24PAY}`, { timeout: 5000 })
+  console.log('24pay 驗證成功：已登入')
+}catch(err){
+  console.error('24pay 驗證失敗：找不到登入特徵，可能未登入或頁面加載過慢')
+}
 
-// ② WebSocket（抓主動推送）
 _24payPage.on('websocket', async ws => {
   ws.on('framereceived',async frame => {
     const data = frame.payload
-
     let msg = data.replace(/\u001e/g, '')
-
     msg = JSON.parse(msg)
-
     if(msg.type === 1){
       const message = msg.arguments[0]
       await telegramTools.sendGroupMessage(groupChatId, message)
@@ -67,14 +68,17 @@ _24payPage.on('websocket', async ws => {
   })
 })
 
-
-
 // VM / 無桌面環境：固定無頭，不在本機開視窗。
 // 吉利部分 
 const jiliContext = await browser.newContext({ storageState: authJsonPathJili })
 const jiliPage = await jiliContext.newPage()
 await tools.gotoUrl({page:jiliPage, url:'https://ptrcqps9.2424ph.com/#/user_system/user_account'})
-
+try{
+  await jiliPage.waitForSelector(`text=${config.ACCOUNT_jili}`, { timeout: 5000 })
+  console.log('jilli 驗證成功：已登入')
+}catch(err){
+  console.error('jili 驗證失敗：找不到登入特徵，可能未登入或頁面加載過慢')
+}
 
 await tools.checkAndNotify({page:jiliPage,groupChatId})
 
