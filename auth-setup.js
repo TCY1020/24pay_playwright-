@@ -10,7 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import tools from './tools.js';
 
-const backstage = process.env.BACKSTAGE
+const backstage = process.env.BACKSTAGE || 'jili'
 
 const storageStatePath = path.resolve(
   process.cwd(),

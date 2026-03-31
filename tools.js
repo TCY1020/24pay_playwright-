@@ -96,6 +96,7 @@ const tools = {
     
                         let name = tds[2]?.innerText?.trim();
                         let balanceText = tds[3]?.innerText?.trim();
+                        let accountId = tds[6]?.innerText?.trim()
     
                         // ⭐ 再防一次
                         if (!balanceText) return null;
@@ -111,6 +112,7 @@ const tools = {
                             balance: Number(
                                 balanceText.replace(/[^0-9.-]/g, '')
                             ),
+                            accountId
                         };
                     })
                     .filter(Boolean); // ⭐ 更簡潔
@@ -134,7 +136,7 @@ const tools = {
         
     },
 
-    getGcashTooLowBalanceList: async ({page, lessAmount = 3000 }) =>{
+    getGcashTooLowBalanceList: async ({page, lessAmount }) =>{
         await tools.selectGcashWap({page, channelName:'GcashWap'})
         await tools.checkBalancePageRefresh(page)
         const gcashBalanceList = await tools.getBalanceList({page, accoutFirstWord:'G'})
@@ -159,18 +161,20 @@ const tools = {
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 
     checkAndNotify: async({page, groupChatId}) =>{
-        const gcashBalanceTooLowAccountList = await tools.getGcashTooLowBalanceList({page, lessAmount: 3000})
+        const config = tools.getConfig()
+        const gcashLowBalanceThreshold = config.GCASH_LOW_BALANCE_THRESHOLD
+        const gcashBalanceTooLowAccountList = await tools.getGcashTooLowBalanceList({page, lessAmount: gcashLowBalanceThreshold})
         const payMayaAllAccountBalance = await tools.getPayMayaAllAccountBalance(page)
         
           let message
           if(gcashBalanceTooLowAccountList.length > 0){
             message = [
-                `Gcash低於 3000 的帳戶：(${gcashBalanceTooLowAccountList.length} 筆)`,
-                ...gcashBalanceTooLowAccountList.map((x) => `- ${x.name}: ${x.balance}`),
+                `Gcash低於 ${gcashLowBalanceThreshold} 的帳戶：(${gcashBalanceTooLowAccountList.length} 筆)`,
+                ...gcashBalanceTooLowAccountList.map((x) => `- ${x.name} (${x.accountId}): ${x.balance}`),
                 `PayMaya總餘: ${payMayaAllAccountBalance.balance}`
               ].join('\n')
           }else{
-            message = `Gcash低於 3000 的帳戶：(0 筆) \n PayMaya總餘: ${payMayaAllAccountBalance.balance}`
+            message = `Gcash低於 ${gcashLowBalanceThreshold} 的帳戶：(0 筆) \n PayMaya總餘: ${payMayaAllAccountBalance.balance}`
           }
 
           if(groupChatId){
