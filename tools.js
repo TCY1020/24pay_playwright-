@@ -1,6 +1,7 @@
 import telegramTools from './telegram.js'
 import fs from 'fs';
 import path from 'path';
+import map from './map.js';
 
 const tools = {
     login: async ({page, backstage = "jili", account}) => {
@@ -36,27 +37,24 @@ const tools = {
         return config
     },
 
-    selectGcashWap: async ({page, channelName}) => {
-        //篩選
-        // 代收狀態: 選擇 開啟
-        const collectionStatusEl = page.locator('.sc-select-filter__item-options').nth(0)
-        await collectionStatusEl.locator('li', { hasText: '开启' }).click()
+    selectState: async ({page, stateIndex, option}) => {
+        const stateEl = page.locator('.sc-select-filter__item-options').nth(stateIndex)
+        await stateEl.locator('li', { hasText: option }).click()
+    },
 
-        channelName = new RegExp(`^${channelName}$`) 
-
-        // 通道名稱: 選擇 GcashWap
+    selectChannelName: async ({page, channelName}) => {
+        channelName = new RegExp(`^${channelName}$`)
         await page.locator('.el-select').nth(0).click()
         const chooseBankEl = page.locator('.el-scrollbar__view.el-select-dropdown__list').nth(0)
         await chooseBankEl.locator('.el-select-dropdown__item', { hasText: channelName }).click()
+    },
 
-        // 一頁顯示量: 選擇 200條/頁
+    selectPageSize: async ({page, pageSizeIndex}) => {
         const wrappers = page.locator('.el-input__wrapper');
         const targetInput = wrappers.locator('input[placeholder="请选择"]').nth(2);
         await targetInput.waitFor({ state: 'visible' })
         await targetInput.click()
-
-        const popper = page.locator('li.el-select-dropdown__item')
-        await popper.nth(9).click()
+        await page.locator('.el-select-dropdown__item',{hasText: pageSizeIndex}).click()
     },
 
     checkBalancePageRefresh: async(page) =>{
@@ -137,7 +135,11 @@ const tools = {
     },
 
     getGcashTooLowBalanceList: async ({page, lessAmount }) =>{
-        await tools.selectGcashWap({page, channelName:'GcashWap'})
+        const selectMap = map.selectMap 
+        await tools.selectState({page, stateIndex: selectMap.state.COLLECTION_STATUS, option: selectMap.stateText.OPEN})
+        await tools.selectChannelName({page, channelName: 'GcashWap'})
+        await tools.selectPageSize({page, pageSizeIndex: selectMap.pageSize[200]})
+
         await tools.checkBalancePageRefresh(page)
         const gcashBalanceList = await tools.getBalanceList({page, accoutFirstWord:'G'})
         const gcashBalanceTooLowAccountList = tools.balanceListFilter({
@@ -149,7 +151,10 @@ const tools = {
     },
 
     getPayMayaAllAccountBalance: async (page) => {
-        await tools.selectGcashWap({page, channelName:'PayMaya'})
+        const selectMap = map.selectMap 
+        await tools.selectState({page, stateIndex: selectMap.state.COLLECTION_STATUS, option: selectMap.stateText.OPEN})
+        await tools.selectChannelName({page, channelName: 'PayMaya'})
+        await tools.selectPageSize({page, pageSizeIndex: selectMap.pageSize[200]})
         await tools.checkBalancePageRefresh(page)
         const balanceList = await tools.getBalanceList({page, accoutFirstWord:'M'})
 
