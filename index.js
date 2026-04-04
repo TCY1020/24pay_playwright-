@@ -1,7 +1,7 @@
-import { chromium } from 'playwright';
-import tools from './tools.js';
+import { chromium } from 'playwright'
+import tools from './tools.js'
 import telegramTools from './telegram.js'
-import {generate} from 'otplib'
+import { generate } from 'otplib'
 import path from 'path'
 import fs from 'fs'
 
@@ -30,12 +30,12 @@ if ( !hasAuthJsonPathJili ) {
 const telegramToken = process.env.TELEGRAM_BOT_TOKEN || config.TELEGRAM_BOT_TOKEN
 if (telegramToken) {
   try {
-    telegramTools.startTelegramBot({token:telegramToken});
+    telegramTools.startTelegramBot({ token:telegramToken })
   } catch (err) {
-    console.error('[telegram] 初始化失敗:', err?.message ?? err);
+    console.error('[telegram] 初始化失敗:', err?.message ?? err)
   }
 }
-const groupChatId = process.env.TELEGRAM_GROUP_CHAT_ID || config.TELEGRAM_GROUP_CHAT_ID;
+const groupChatId = process.env.TELEGRAM_GROUP_CHAT_ID || config.TELEGRAM_GROUP_CHAT_ID
 
 const browser = await chromium.launch({ headless: true })
 
@@ -43,7 +43,7 @@ const browser = await chromium.launch({ headless: true })
 const _24payContext= await browser.newContext()
 const _24payPage = await _24payContext.newPage()
 const secret = config.SECRET_24PAY
-const token = await generate({secret})
+const token = await generate({ secret: secret })
 await _24payPage.goto('https://www.24pay.sbs/home/login')
 await _24payPage.locator('[name="Name"]').type(config.ACCOUNT_24PAY, { delay: 100 })
 await _24payPage.locator('[name="Password"]').type(config.PASSWORD_24PAY, { delay: 100 })
@@ -72,7 +72,7 @@ _24payPage.on('websocket', async ws => {
 // 吉利部分 
 const jiliContext = await browser.newContext({ storageState: authJsonPathJili })
 const jiliPage = await jiliContext.newPage()
-await tools.gotoUrl({page:jiliPage, url:'https://ptrcqps9.2424ph.com/#/user_system/user_account'})
+await tools.gotoUrl({ page:jiliPage, url:'https://ptrcqps9.2424ph.com/#/user_system/user_account' })
 try{
   await jiliPage.waitForSelector(`text=${config.ACCOUNT_jili}`, { timeout: 5000 })
   console.log('jilli 驗證成功：已登入')
@@ -80,7 +80,7 @@ try{
   console.error('jili 驗證失敗：找不到登入特徵，可能未登入或頁面加載過慢')
 }
 
-await tools.checkAndNotify({page:jiliPage,groupChatId})
+await tools.checkAndNotify({ page:jiliPage,groupChatId: groupChatId })
 
 const researchIntervalMs = process.env.RESEARCH_INTERVAL_MS || config.RESEARCH_INTERVAL_MS
 
@@ -89,8 +89,8 @@ while (true) {
 
   try {
     await tools.reSearch(jiliPage)
-    await tools.checkAndNotify({page:jiliPage,groupChatId})
+    await tools.checkAndNotify({ page:jiliPage,groupChatId: groupChatId })
   } catch (err) {
-    console.error('[流程] 重新搜尋或通知失敗:', err?.message ?? err);
+    console.error('[流程] 重新搜尋或通知失敗:', err?.message ?? err)
   }
 }
