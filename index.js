@@ -1,15 +1,19 @@
 import { chromium } from 'playwright'
-import tools from './tools.js'
-import telegramTools from './telegram.js'
+import Tools from './tools.js'
+import TelegramTools from './telegram.js'
 import { generate } from 'otplib'
 import path from 'path'
 import fs from 'fs'
+import { getConfig } from './config.js'
 
 
 // =====================
 // 🔧 載入設定檔（config.json fallback to .env）
 // =====================
-const config = tools.getConfig()
+const config = getConfig()
+
+const tools = new Tools({ config: config })
+const telegramTools = new TelegramTools({ token: config.TELEGRAM_BOT_TOKEN })
 
 // =====================
 // 🔐 檢查登入狀態（auth.json 必須存在）
@@ -24,18 +28,7 @@ if ( !hasAuthJsonPathJili ) {
   process.exit(1)
 }
 
-
-
-// 讓 `npm run dev` 同時啟動 telegram bot（若已設定 token）
-const telegramToken = process.env.TELEGRAM_BOT_TOKEN || config.TELEGRAM_BOT_TOKEN
-if (telegramToken) {
-  try {
-    telegramTools.startTelegramBot({ token:telegramToken })
-  } catch (err) {
-    console.error('[telegram] 初始化失敗:', err?.message ?? err)
-  }
-}
-const groupChatId = process.env.TELEGRAM_GROUP_CHAT_ID || config.TELEGRAM_GROUP_CHAT_ID
+const groupChatId = config.TELEGRAM_GROUP_CHAT_ID
 
 const browser = await chromium.launch({ headless: true })
 
@@ -49,10 +42,10 @@ await _24payPage.locator('[name="Name"]').type(config.ACCOUNT_24PAY, { delay: 10
 await _24payPage.locator('[name="Password"]').type(config.PASSWORD_24PAY, { delay: 100 })
 await _24payPage.locator('[name="GoogleVerificationCode"]').type(token, { delay: 100 })
 await _24payPage.locator('.loginin').click()
-try{
+try {
   await _24payPage.waitForSelector(`text=${config.ACCOUNT_24PAY}`, { timeout: 5000 })
   console.log('24pay 驗證成功：已登入')
-}catch(err){
+} catch (err) {
   console.error('24pay 驗證失敗：找不到登入特徵，可能未登入或頁面加載過慢')
 }
 
@@ -61,7 +54,7 @@ _24payPage.on('websocket', async ws => {
     const data = frame.payload
     let msg = data.replace(/\u001e/g, '')
     msg = JSON.parse(msg)
-    if(msg.type === 1){
+    if (msg.type === 1) {
       const message = msg.arguments[0]
       await telegramTools.sendGroupMessage(groupChatId, message)
     }
@@ -72,24 +65,27 @@ _24payPage.on('websocket', async ws => {
 // 吉利部分 
 const jiliContext = await browser.newContext({ storageState: authJsonPathJili })
 const jiliPage = await jiliContext.newPage()
-await tools.gotoUrl({ page:jiliPage, url:'https://ptrcqps9.2424ph.com/#/user_system/user_account' })
-try{
+await tools.gotoUrl({ page: jiliPage, url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account' })
+try {
   await jiliPage.waitForSelector(`text=${config.ACCOUNT_jili}`, { timeout: 5000 })
   console.log('jilli 驗證成功：已登入')
-}catch(err){
+} catch (err) {
   console.error('jili 驗證失敗：找不到登入特徵，可能未登入或頁面加載過慢')
 }
 
-await tools.checkAndNotify({ page:jiliPage,groupChatId: groupChatId })
+let message
+message = await tools.checkAndNotify({ page: jiliPage })
+await telegramTools.sendGroupMessage(groupChatId, message)
 
-const researchIntervalMs = process.env.RESEARCH_INTERVAL_MS || config.RESEARCH_INTERVAL_MS
+const researchIntervalMs = config.RESEARCH_INTERVAL_MS
 
 while (true) {
   await tools.sleep(researchIntervalMs)
 
   try {
     await tools.reSearch(jiliPage)
-    await tools.checkAndNotify({ page:jiliPage,groupChatId: groupChatId })
+    message =await tools.checkAndNotify({ page: jiliPage })
+    await telegramTools.sendGroupMessage(groupChatId, message)
   } catch (err) {
     console.error('[流程] 重新搜尋或通知失敗:', err?.message ?? err)
   }

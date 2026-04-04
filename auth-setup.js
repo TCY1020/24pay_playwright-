@@ -8,7 +8,11 @@
 import { chromium } from 'playwright'
 import fs from 'fs'
 import path from 'path'
-import tools from './tools.js'
+import Tools from './tools.js'
+import { getConfig } from './config.js'
+
+const config = getConfig()
+const tools = new Tools({ config: config })
 
 const backstage = process.env.BACKSTAGE || 'jili'
 
