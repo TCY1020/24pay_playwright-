@@ -108,7 +108,7 @@ class Tools {
 
   balanceListFilter = ({ balanceList, lessAmount }) => {
     const filtered = balanceList.filter(item => {
-      return item.name !== '總共' && item.balance < lessAmount
+      return item.name === '總共' || item.balance < lessAmount
     })
 
     return filtered
@@ -168,11 +168,17 @@ class Tools {
   formatBalanceReport = ({ lowList, threshold, payMayaBalance }) => {
     const count = lowList.length
     const header = `Gcash低於 ${threshold} 的帳戶：(${count} 筆)`
-    const footer = `PayMaya總餘: ${payMayaBalance}`
+    const footer = `\nPayMaya總餘: ${payMayaBalance}`
   
     let body = ''
     if (count > 0) {
-      body = lowList.map((x) => `- ${x.name} (${x.accountId}): ${x.balance}`).join('\n')
+      body = lowList.map((x) => {
+        if(x.name ==='總共'){
+          return `Gcash總餘: ${x.balance}`
+        }else{
+          return `- ${x.name} (${x.accountId}): ${x.balance}`
+        }
+      }).join('\n')
     }
   
     const result = [header, body, footer].filter(Boolean).join('\n')
