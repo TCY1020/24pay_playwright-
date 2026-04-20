@@ -15,6 +15,8 @@ const config = getConfig()
 const tools = new Tools({ config: config })
 const telegramTools = new TelegramTools({ token: config.TELEGRAM_BOT_TOKEN })
 
+telegramTools.startPolling()
+
 // =====================
 // 🔐 檢查登入狀態（auth.json 必須存在）
 // =====================
@@ -67,11 +69,37 @@ const jiliContext = await browser.newContext({ storageState: authJsonPathJili })
 const jiliPage = await jiliContext.newPage()
 await tools.gotoUrl({ page: jiliPage, url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account' })
 try {
-  await jiliPage.waitForSelector(`text=${config.ACCOUNT_jili}`, { timeout: 5000 })
+  await jiliPage.waitForSelector(`text=${config.ACCOUNT_JILI}`, { timeout: 5000 })
   console.log('jilli 驗證成功：已登入')
 } catch (err) {
   console.error('jili 驗證失敗：找不到登入特徵，可能未登入或頁面加載過慢')
 }
+
+const channelNameList = config.REFRESH_CHANNEL_NAME_LIST
+telegramTools.onMessage(async msg => {
+  const chatId = msg.chat.id
+
+  if (msg.text === '/start') {
+    const refreshPage = {}
+    for(const name of channelNameList){
+      refreshPage[name] = await tools.getNewPage({ context: jiliContext })
+    }
+
+    const resultList = await Promise.all(
+      channelNameList.map(name =>
+        tools.runChannelProcess({
+          page: refreshPage[name],
+          name
+        })
+      )
+    )
+
+    telegramTools.sendGroupMessage(
+      chatId,
+      `${resultList.join(', ')} >>> 皆已刷新完成`
+    )
+  }
+})
 
 let message
 message = await tools.checkAndNotify({ page: jiliPage })

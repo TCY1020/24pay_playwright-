@@ -13,7 +13,15 @@ class TelegramTools {
     this.botInstance = new TelegramBot(this.token, { polling: false })
   }
 
-  sendGroupMessage = async (chatId, text, options = {}) => {
+  startPolling = () => {
+    this.botInstance.startPolling()
+  }
+
+  onMessage = (handler) => {
+    this.botInstance.on('message', handler)
+  }
+
+  sendGroupMessage =  (chatId, text, options = {}) => {
     // 現在這裡不需要 if (!this.botInstance) 了
     if (!chatId) throw new Error('請提供 group chatId（數字）')
     if (!text) throw new Error('訊息文字不可為空')

@@ -12,7 +12,7 @@ class Tools {
 
     if (backstage === 'jili') {
       url = 'https://ptrcqps9.2424ph.com/#/login'
-      account = this.config.ACCOUNT_jili
+      account = this.config.ACCOUNT_JILI
     }
     await page.goto(url)
     console.log('請手動登入')
@@ -22,7 +22,18 @@ class Tools {
   }
 
   gotoUrl = async ({ page, url }) => {
-    await page.goto(url)
+    await page.goto(url, {
+      waitUntil: 'networkidle',
+      timeout: 60000
+    })
+
+    // ✅ 確認 URL（如果會變）
+    console.log('當前URL:', page.url())
+    const isLogin = await page.locator('text=2405a').isVisible().catch(() => false)
+
+    if (!isLogin) {
+      throw new Error('❌ 未登入（auth.json 失效）')
+    }
   }
 
   selectState = async ({ page, stateIndex, option }) => {
@@ -128,6 +139,90 @@ class Tools {
     })
 
     return result
+  }
+
+  getNewPage = async({ context }) => {
+    return context.newPage()
+  }
+
+  getMaxPage = async({ page }) => {
+    const pagerItems = page.locator('.el-pager li.number')
+    await page.waitForTimeout(5000)
+
+    const numbers = await pagerItems.allTextContents()
+
+    const max = Math.max(
+      ...numbers.map(n => parseInt(n.trim(), 10))
+    )
+
+    return max
+  }
+
+  chouseAllCheckBox = async({page}) =>{
+    return await page.locator('.el-checkbox__input').nth(0).click()
+  }
+
+  runChannelProcess = async ({ page, name }) => {
+    const selectMap = map.selectMap
+    await this.gotoUrl({
+      page,
+      url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account'
+    })
+  
+    await this.selectChannelName({
+      page,
+      channelName: name
+    })
+  
+    await this.selectState({
+      page,
+      stateIndex: selectMap.state.COLLECTION_STATUS,
+      option: selectMap.stateText.OPEN
+    })
+  
+    await this.reSearch(page)
+
+    while (true) {
+      await this.chouseAllCheckBox({ page })
+      await this.pushUpdatButton({ page })
+      const nextBtn = page.locator('.btn-next')
+    
+      const isDisabled = await nextBtn.getAttribute('aria-disabled')
+      if (isDisabled === 'true') {
+        break
+      }
+    
+      await Promise.all([
+        nextBtn.click(),
+        page.locator('.el-pager li.is-active').waitFor()
+      ])
+    }
+
+    await page.close()
+
+    return name
+  }
+
+  pushUpdatButton = async ({ page }) => {
+    try {
+      const btn = page.locator(
+        'button.el-button--warning:not(.is-disabled)',
+        { hasText: '更新' }
+      )
+  
+      await btn.waitFor({ state: 'visible', timeout: 10000 })
+  
+      // 🔥 核心：點擊 + 等 loading
+      await Promise.all([
+        btn.click(),
+        btn.locator('.el-loading-mask').waitFor({ state: 'detached' }).catch(() => {})
+      ])
+  
+      return true
+    } catch (err) {
+      console.log('❌ 更新按鈕點擊失敗', err)
+      return false
+    }
   }
 
   getPayMayaAllAccountBalance = async (page) => {
