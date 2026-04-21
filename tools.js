@@ -56,57 +56,57 @@ class Tools {
     await page.locator('.el-select-dropdown__item', { hasText: pageSizeIndex }).click()
   }
 
-  checkBalancePageRefresh = async (page) => {
+  refreshAndWaitForBalanceTable = async (page) => {
     const rows = page.locator('tbody tr')
-    const beforeCount = await rows.count()
-    const beforeFirstName = await rows.nth(0).locator('td').nth(2).innerText().catch(() => '')
-
+  
+    // 👉 先記錄舊資料（整列，比只看一個欄位更準）
+    const beforeList = await rows.evaluateAll(rows =>
+      rows.map(row => row.innerText)
+    )
+  
+    // 👉 點刷新
     await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click()
-
+  
+    // 👉 等 loading 消失（如果有）
+    await page.locator('.el-loading-mask').waitFor({ state: 'hidden' }).catch(() => {})
+  
+    // 👉 等資料變化
     await page.waitForFunction(
-      ({ beforeCount, beforeFirstName }) => {
-        const rowEls = document.querySelectorAll('tbody tr')
-        if (!rowEls || rowEls.length === 0) return false
-
-        const firstRowTds = rowEls[0].querySelectorAll('td')
-        const afterFirstName = (firstRowTds[2]?.innerText || '').trim()
-
-        return rowEls.length !== beforeCount || afterFirstName !== beforeFirstName
+      (oldList) => {
+        const newList = Array.from(document.querySelectorAll('tbody tr'))
+          .map(row => row.innerText)
+  
+        // 沒資料就繼續等
+        if (!newList.length) return false
+  
+        return JSON.stringify(newList) !== JSON.stringify(oldList)
       },
-      { beforeCount: beforeCount, beforeFirstName: beforeFirstName }
+      beforeList,
+      { timeout: 10000 }
     )
   }
 
-  getBalanceList = async ({ page, accoutFirstWord = 'G' }) => {
+  getBalanceList = async ({ page }) => {
     const result = await page.$$eval(
-      'tbody tr',
-      (rows, word) => {
+      'tbody tr', rows =>{
         return rows
-          .map(row => {
-            const tds = row.querySelectorAll('td')
-            if (tds.length < 4) return null
-
-            let name = tds[2]?.innerText?.trim()
-            let balanceText = tds[3]?.innerText?.trim()
-            let accountId = tds[6]?.innerText?.trim()
-
-            if (!balanceText) return null
-
-            if (!name) {
-              name = '總共'
-            } else if (name[0] !== word) {
-              return null
-            }
-
-            return {
-              name: name,
-              balance: Number(balanceText.replace(/[^0-9.-]/g, '')),
-              accountId: accountId
-            }
-          })
-          .filter(Boolean)
-      },
-      accoutFirstWord
+         .map(row =>{
+          const getText = (selector) =>
+            row.querySelector(selector)?.innerText?.trim()
+          // 對應欄位
+          let name = getText('.el-table_1_column_5 .cell') // MB114
+          let balanceText = getText('.el-table_1_column_6.el-table__cell') // 1000
+          let accountId = getText('.el-table_1_column_9 .cell span') // 電話
+          if (name === undefined) return null
+          if (name === '') name = '總共'
+          return {
+            name,
+            balance:balanceText,
+            accountId
+          }
+         })
+         .filter(Boolean)
+      }
     )
 
     return result
@@ -130,9 +130,9 @@ class Tools {
     await this.selectState({ page: page, stateIndex: selectMap.state.COLLECTION_STATUS, option: selectMap.stateText.OPEN })
     await this.selectChannelName({ page: page, channelName: 'GcashWap' })
     await this.selectPageSize({ page: page, pageSizeIndex: selectMap.pageSize[200] })
-
-    await this.checkBalancePageRefresh(page)
-    const gcashBalanceList = await this.getBalanceList({ page: page, accoutFirstWord: 'G' })
+    
+    await this.refreshAndWaitForBalanceTable(page)
+    const gcashBalanceList = await this.getBalanceList({ page: page })
     const result = this.balanceListFilter({
       balanceList: gcashBalanceList,
       lessAmount: lessAmount,
@@ -230,8 +230,8 @@ class Tools {
     await this.selectState({ page: page, stateIndex: selectMap.state.COLLECTION_STATUS, option: selectMap.stateText.OPEN })
     await this.selectChannelName({ page: page, channelName: 'PayMaya' })
     await this.selectPageSize({ page: page, pageSizeIndex: selectMap.pageSize[200] })
-    await this.checkBalancePageRefresh(page)
-    const balanceList = await this.getBalanceList({ page: page, accoutFirstWord: 'M' })
+    await this.refreshAndWaitForBalanceTable(page)
+    const balanceList = await this.getBalanceList({ page: page })
 
     const result = balanceList.filter(item => item.name === '總共')[0]
 
@@ -241,8 +241,7 @@ class Tools {
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
   checkAndNotify = async ({ page }) => {
-    const gcashLowBalanceThreshold = this.config.GCASH_LOW_BALANCE_THRESHOLD
-  
+    const gcashLowBalanceThreshold = this.config.GCASH_LOW_BALANCE_THRESHOLD  
     // 1. 取得資料
     const lowAccountList = await this.getGcashTooLowBalanceList({ 
       page: page, 
