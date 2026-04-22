@@ -1,5 +1,3 @@
-import map from './map.js'
-
 class Tools {
   constructor({ config }) {
     // 如果有需要初始化的高頻變數可以放這裡
@@ -88,9 +86,9 @@ class Tools {
 
   getBalanceList = async ({ page }) => {
     const result = await page.$$eval(
-      'tbody tr', rows =>{
+      'tbody tr', rows => {
         return rows
-         .map(row =>{
+         .map(row => {
           const getText = (selector) =>
             row.querySelector(selector)?.innerText?.trim()
           // 對應欄位
@@ -99,10 +97,11 @@ class Tools {
           let accountId = getText('.el-table_1_column_9 .cell span') // 電話
           if (name === undefined) return null
           if (name === '') name = '總共'
+
           return {
-            name,
-            balance:balanceText,
-            accountId
+            name: name,
+            balance: balanceText,
+            accountId: accountId
           }
          })
          .filter(Boolean)
@@ -125,26 +124,6 @@ class Tools {
     return filtered
   }
 
-  getGcashTooLowBalanceList = async ({ page, lessAmount }) => {
-    const selectMap = map.selectMap
-    await this.selectState({ page: page, stateIndex: selectMap.state.COLLECTION_STATUS, option: selectMap.stateText.OPEN })
-    await this.selectChannelName({ page: page, channelName: 'GcashWap' })
-    await this.selectPageSize({ page: page, pageSizeIndex: selectMap.pageSize[200] })
-    
-    await this.refreshAndWaitForBalanceTable(page)
-    const gcashBalanceList = await this.getBalanceList({ page: page })
-    const result = this.balanceListFilter({
-      balanceList: gcashBalanceList,
-      lessAmount: lessAmount,
-    })
-
-    return result
-  }
-
-  getNewPage = async({ context }) => {
-    return context.newPage()
-  }
-
   getMaxPage = async({ page }) => {
     const pagerItems = page.locator('.el-pager li.number')
     await page.waitForTimeout(5000)
@@ -158,52 +137,11 @@ class Tools {
     return max
   }
 
-  chouseAllCheckBox = async({page}) =>{
+  chouseAllCheckBox = async({ page }) => {
     return await page.locator('.el-checkbox__input').nth(0).click()
   }
 
-  runChannelProcess = async ({ page, name }) => {
-    const selectMap = map.selectMap
-    await this.gotoUrl({
-      page,
-      url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account'
-    })
-  
-    await this.selectChannelName({
-      page,
-      channelName: name
-    })
-  
-    await this.selectState({
-      page,
-      stateIndex: selectMap.state.COLLECTION_STATUS,
-      option: selectMap.stateText.OPEN
-    })
-  
-    await this.reSearch(page)
-    while (true) {
-      await this.chouseAllCheckBox({ page })
-      await this.pushUpdatButton({ page })
-      await this.waitSuccessMessage({page})
-      const nextBtn = page.locator('.btn-next')
-    
-      const isDisabled = await nextBtn.getAttribute('aria-disabled')
-      if (isDisabled === 'true') {
-        break
-      }
-    
-      await Promise.all([
-        nextBtn.click(),
-        page.locator('.el-pager li.is-active').waitFor()
-      ])
-    }
-
-    await page.close()
-
-    return name
-  }
-
-  waitSuccessMessage = async ({page}) => {
+  waitSuccessMessage = async ({ page }) => {
     await page.locator('.el-message--success').waitFor({ timeout: 120000 })
     
     await page.waitForTimeout(3000)
@@ -243,64 +181,12 @@ class Tools {
       return true
     } catch (err) {
       console.log('❌ 更新按鈕點擊失敗', err)
+
       return false
     }
   }
 
-  getPayMayaAllAccountBalance = async (page) => {
-    const selectMap = map.selectMap
-    await this.selectState({ page: page, stateIndex: selectMap.state.COLLECTION_STATUS, option: selectMap.stateText.OPEN })
-    await this.selectChannelName({ page: page, channelName: 'PayMaya' })
-    await this.selectPageSize({ page: page, pageSizeIndex: selectMap.pageSize[200] })
-    await this.refreshAndWaitForBalanceTable(page)
-    const balanceList = await this.getBalanceList({ page: page })
-
-    const result = balanceList.filter(item => item.name === '總共')[0]
-
-    return result
-  }
-
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
-  checkAndNotify = async ({ page }) => {
-    const gcashLowBalanceThreshold = this.config.GCASH_LOW_BALANCE_THRESHOLD  
-    // 1. 取得資料
-    const lowAccountList = await this.getGcashTooLowBalanceList({ 
-      page: page, 
-      lessAmount: gcashLowBalanceThreshold 
-    })
-    const payMayaBalance = await this.getPayMayaAllAccountBalance(page)
-  
-    // 2. 格式化訊息
-    const message = this.formatBalanceReport({
-      lowList: lowAccountList,
-      threshold: gcashLowBalanceThreshold,
-      payMayaBalance: payMayaBalance.balance
-    })
-
-    return message
-  }
-
-  formatBalanceReport = ({ lowList, threshold, payMayaBalance }) => {
-    const count = lowList.length
-    const header = `Gcash低於 ${threshold} 的帳戶：(${count} 筆)`
-    const footer = `\nPayMaya總餘: ${payMayaBalance}`
-  
-    let body = ''
-    if (count > 0) {
-      body = lowList.map((x) => {
-        if(x.name ==='總共'){
-          return `Gcash總餘: ${x.balance}`
-        }else{
-          return `- ${x.name} (${x.accountId}): ${x.balance}`
-        }
-      }).join('\n')
-    }
-  
-    const result = [header, body, footer].filter(Boolean).join('\n')
-  
-    return result
-  }
 }
 
 // 匯出實例化後的物件

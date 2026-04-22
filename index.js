@@ -1,120 +1,57 @@
-import { chromium } from 'playwright'
+import { BrowserTools } from './src/infra/browser.js'
 import Tools from './tools.js'
 import TelegramTools from './telegram.js'
-import { generate } from 'otplib'
-import path from 'path'
-import fs from 'fs'
+import login24pay from './src/pages/24payLoginPage.js'
+import checkJiliLoginPage from './src/pages/jiliLoginPage.js'
+import start24payWsForwardFlow from './src/flows/24payWsForwardFlow.js'
+import registerJiliRefreshCommandFlow from './src/flows/jiliRefreshCommandFlow.js'
+import startJiliBalanceMonitorFlow from './src/flows/jiliBalanceMonitorFlow.js'
+import ensureJiliAuthState from './src/usecases/jili/ensureJiliAuthState.js'
 import { getConfig } from './config.js'
 
 
-// =====================
-// 🔧 載入設定檔（config.json fallback to .env）
-// =====================
+// 1) 基礎設定與共用工具初始化
 const config = getConfig()
-
 const tools = new Tools({ config: config })
 const telegramTools = new TelegramTools({ token: config.TELEGRAM_BOT_TOKEN })
 
+// 2) 啟動 Telegram polling（後續 flow 會註冊訊息事件）
 telegramTools.startPolling()
 
-// =====================
-// 🔐 檢查登入狀態（auth.json 必須存在）
-// =====================
-const authJsonPathJili = path.join(process.cwd(), 'jili_auth.json')
-const hasAuthJsonPathJili = fs.existsSync(authJsonPathJili)
-
-if ( !hasAuthJsonPathJili ) {
-  console.error(`
-    Jili憑證${hasAuthJsonPathJili? '已找到' :'未找到'}\n
-    請先在本機執行: npm run auth-setup，產生登入狀態後再執行 npm run dev`)
-  process.exit(1)
-}
+// 3) 啟動前先驗證 jili 登入狀態檔是否存在
+const authJsonPathJili = ensureJiliAuthState()
 
 const groupChatId = config.TELEGRAM_GROUP_CHAT_ID
 
-const browser = await chromium.launch({ headless: true })
+// 4) 共用 browser 實例（24pay / jili 各自使用獨立 context）
+const browserTools = new BrowserTools({ headless: true })
+const browser = await browserTools.launchBrowser()
 
-// 24pay
+// 5) 24pay：登入 + 啟動 websocket 轉發流程
 const _24payContext= await browser.newContext()
 const _24payPage = await _24payContext.newPage()
-const secret = config.SECRET_24PAY
-const token = await generate({ secret: secret })
-await _24payPage.goto('https://www.24pay.sbs/home/login')
-await _24payPage.locator('[name="Name"]').type(config.ACCOUNT_24PAY, { delay: 100 })
-await _24payPage.locator('[name="Password"]').type(config.PASSWORD_24PAY, { delay: 100 })
-await _24payPage.locator('[name="GoogleVerificationCode"]').type(token, { delay: 100 })
-await _24payPage.locator('.loginin').click()
-try {
-  await _24payPage.waitForSelector(`text=${config.ACCOUNT_24PAY}`, { timeout: 5000 })
-  console.log('24pay 驗證成功：已登入')
-} catch (err) {
-  console.error('24pay 驗證失敗：找不到登入特徵，可能未登入或頁面加載過慢')
-}
+await login24pay({ page: _24payPage, config: config })
+start24payWsForwardFlow({ page: _24payPage, telegramTools: telegramTools, groupChatId: groupChatId, config })
 
-_24payPage.on('websocket', async ws => {
-  ws.on('framereceived',async frame => {
-    const data = frame.payload
-    let msg = data.replace(/\u001e/g, '')
-    msg = JSON.parse(msg)
-    if (msg.type === 1) {
-      const message = msg.arguments[0]
-      await telegramTools.sendGroupMessage(groupChatId, message)
-    }
-  })
-})
 
-// VM / 無桌面環境：固定無頭，不在本機開視窗。
-// 吉利部分 
+// 6) jili：建立已登入 context 並確認登入狀態
 const jiliContext = await browser.newContext({ storageState: authJsonPathJili })
 const jiliPage = await jiliContext.newPage()
-await tools.gotoUrl({ page: jiliPage, url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account' })
-try {
-  await jiliPage.waitForSelector(`text=${config.ACCOUNT_JILI}`, { timeout: 5000 })
-  console.log('jilli 驗證成功：已登入')
-} catch (err) {
-  console.error('jili 驗證失敗：找不到登入特徵，可能未登入或頁面加載過慢')
-}
+await checkJiliLoginPage({ page: jiliPage, config: config })
 
-const channelNameList = config.REFRESH_CHANNEL_NAME_LIST
-telegramTools.onMessage(async msg => {
-  const chatId = msg.chat.id
-
-  if (msg.text === '/start') {
-    const refreshPage = {}
-    for(const name of channelNameList){
-      refreshPage[name] = await tools.getNewPage({ context: jiliContext })
-    }
-
-    const resultList = await Promise.all(
-      channelNameList.map(name =>
-        tools.runChannelProcess({
-          page: refreshPage[name],
-          name
-        })
-      )
-    )
-
-    telegramTools.sendGroupMessage(
-      chatId,
-      `${resultList.join(', ')} >>> 皆已刷新完成`
-    )
-  }
+// 7) jili 指令流程：監聽 /start 觸發批次刷新
+registerJiliRefreshCommandFlow({ 
+  telegramTools: telegramTools,
+  channelNameList: config.REFRESH_CHANNEL_NAME_LIST,
+  jiliContext: jiliContext, 
+  tools: tools
 })
 
-let message
-message = await tools.checkAndNotify({ page: jiliPage })
-await telegramTools.sendGroupMessage(groupChatId, message)
-
-const researchIntervalMs = config.RESEARCH_INTERVAL_MS
-
-while (true) {
-  await tools.sleep(researchIntervalMs)
-
-  try {
-    await tools.reSearch(jiliPage)
-    message =await tools.checkAndNotify({ page: jiliPage })
-    await telegramTools.sendGroupMessage(groupChatId, message)
-  } catch (err) {
-    console.error('[流程] 重新搜尋或通知失敗:', err?.message ?? err)
-  }
-}
+// 8) jili 監控流程：常駐輪詢餘額並發送通知
+await startJiliBalanceMonitorFlow({ 
+  tools: tools,
+  jiliPage: jiliPage,
+  telegramTools: telegramTools,
+  groupChatId: groupChatId,
+  config: config 
+})
