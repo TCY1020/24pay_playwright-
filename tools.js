@@ -181,10 +181,10 @@ class Tools {
     })
   
     await this.reSearch(page)
-
     while (true) {
       await this.chouseAllCheckBox({ page })
       await this.pushUpdatButton({ page })
+      await this.waitSuccessMessage({page})
       const nextBtn = page.locator('.btn-next')
     
       const isDisabled = await nextBtn.getAttribute('aria-disabled')
@@ -201,6 +201,28 @@ class Tools {
     await page.close()
 
     return name
+  }
+
+  waitSuccessMessage = async ({page}) => {
+    await page.locator('.el-message--success').waitFor({ timeout: 120000 })
+    
+    await page.waitForTimeout(3000)
+}
+
+  waitUpdateFinish = async ({ page }) => {
+    const success = page.locator('.el-message--success')
+    const spinner = page.locator('.el-loading-spinner')
+  
+    await Promise.race([
+      // 成功訊息
+      success.waitFor({ state: 'visible', timeout: 8000 }),
+  
+      // 或 loading 結束
+      spinner.waitFor({ state: 'detached', timeout: 8000 }).catch(() => {})
+    ]).catch(() => {})
+  
+    // 保險：等 UI 穩一下
+    await page.waitForTimeout(300)
   }
 
   pushUpdatButton = async ({ page }) => {
