@@ -10,7 +10,7 @@ const getGcashTooLowBalanceList = async ({ tools, page, lessAmount }) => {
   await tools.selectChannelName({ page: page, channelName: 'GcashWap' })
   await tools.selectPageSize({ page: page, pageSizeIndex: selectMap.pageSize[200] })
 
-  await tools.refreshAndWaitForBalanceTable(page)
+  await tools.refreshAndWaitForBalanceTable({ page: page })
   const gcashBalanceList = await tools.getBalanceList({ page: page })
 
   return tools.balanceListFilter({

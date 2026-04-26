@@ -9,7 +9,7 @@ const getPayMayaAllAccountBalance = async ({ tools, page }) => {
   })
   await tools.selectChannelName({ page: page, channelName: 'PayMaya' })
   await tools.selectPageSize({ page: page, pageSizeIndex: selectMap.pageSize[200] })
-  await tools.refreshAndWaitForBalanceTable(page)
+  await tools.refreshAndWaitForBalanceTable({ page: page })
   const balanceList = await tools.getBalanceList({ page: page })
 
   return balanceList.find(item => item.name === '總共')

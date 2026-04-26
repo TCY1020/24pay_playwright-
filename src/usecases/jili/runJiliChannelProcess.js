@@ -21,7 +21,7 @@ const runJiliChannelProcess = async ({ tools, page, name }) => {
   await tools.reSearch(page)
   while (true) {
     await tools.chouseAllCheckBox({ page: page })
-    await tools.pushUpdatButton({ page: page })
+    await tools.clickBatchUpdatButton({ page: page })
     await tools.waitSuccessMessage({ page: page })
     const nextBtn = page.locator('.btn-next')
 
@@ -41,4 +41,25 @@ const runJiliChannelProcess = async ({ tools, page, name }) => {
   return name
 }
 
-export default runJiliChannelProcess
+const runJiliMarchantNameProcess = async ({ tools, page, merchantList }) => {
+  await tools.gotoUrl({
+    page: page,
+    url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account'
+  })
+
+  for (const merchant of merchantList) {
+    await tools.inputMerchantName({ page: page, merchantName: merchant })
+    await tools.refreshAndWaitForBalanceTable({ page: page })
+    const isOnlyone = await tools.checkTrOnlyone({ page: page })
+    if (isOnlyone) {
+      break
+    }
+    await tools.clickUpdateButton({ page: page })
+    await tools.waitSuccessMessage({ page: page })
+  }
+  await page.close()
+
+  return merchantList
+}
+
+export { runJiliChannelProcess,runJiliMarchantNameProcess }

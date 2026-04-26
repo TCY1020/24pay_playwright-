@@ -31,7 +31,7 @@ const browser = await browserTools.launchBrowser()
 const _24payContext= await browser.newContext()
 const _24payPage = await _24payContext.newPage()
 await login24pay({ page: _24payPage, config: config })
-start24payWsForwardFlow({ page: _24payPage, telegramTools: telegramTools, groupChatId: groupChatId, config })
+start24payWsForwardFlow({ page: _24payPage, telegramTools: telegramTools, groupChatId: groupChatId, config: config })
 
 
 // 6) jili：建立已登入 context 並確認登入狀態
@@ -44,7 +44,8 @@ registerJiliRefreshCommandFlow({
   telegramTools: telegramTools,
   channelNameList: config.REFRESH_CHANNEL_NAME_LIST,
   jiliContext: jiliContext, 
-  tools: tools
+  merchantList: config.MERCHANT_LIST,
+  tools: tools,
 })
 
 // 8) jili 監控流程：常駐輪詢餘額並發送通知

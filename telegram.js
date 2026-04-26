@@ -17,7 +17,7 @@ class TelegramTools {
     this.botInstance.startPolling()
   }
 
-  onMessage = ({handler}) => {
+  onMessage = ({ handler }) => {
     this.botInstance.on('message', handler)
   }
 

@@ -26,7 +26,6 @@ class Tools {
     })
 
     // ✅ 確認 URL（如果會變）
-    console.log('當前URL:', page.url())
     const isLogin = await page.locator('text=2405a').isVisible().catch(() => false)
 
     if (!isLogin) {
@@ -54,7 +53,7 @@ class Tools {
     await page.locator('.el-select-dropdown__item', { hasText: pageSizeIndex }).click()
   }
 
-  refreshAndWaitForBalanceTable = async (page) => {
+  refreshAndWaitForBalanceTable = async ({ page }) => {
     const rows = page.locator('tbody tr')
   
     // 👉 先記錄舊資料（整列，比只看一個欄位更準）
@@ -147,23 +146,7 @@ class Tools {
     await page.waitForTimeout(3000)
 }
 
-  waitUpdateFinish = async ({ page }) => {
-    const success = page.locator('.el-message--success')
-    const spinner = page.locator('.el-loading-spinner')
-  
-    await Promise.race([
-      // 成功訊息
-      success.waitFor({ state: 'visible', timeout: 8000 }),
-  
-      // 或 loading 結束
-      spinner.waitFor({ state: 'detached', timeout: 8000 }).catch(() => {})
-    ]).catch(() => {})
-  
-    // 保險：等 UI 穩一下
-    await page.waitForTimeout(300)
-  }
-
-  pushUpdatButton = async ({ page }) => {
+  clickBatchUpdatButton = async ({ page }) => {
     try {
       const btn = page.locator(
         'button.el-button--warning:not(.is-disabled)',
@@ -187,6 +170,29 @@ class Tools {
   }
 
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  inputMerchantName = async ({ page, merchantName }) => {
+    const merchantInput = page.locator('input[placeholder="商户名称"]')
+    await merchantInput.waitFor({ state: 'visible' })
+    const currentValue = await merchantInput.inputValue()
+    if (currentValue.trim()) {
+      await merchantInput.fill('')
+    }
+    await merchantInput.type(merchantName)
+  }
+
+  checkTrOnlyone = async({ page }) => {
+    const trs = await page.locator('tbody tr')
+    if (trs.count() === 1) {
+      return true
+    }
+
+    return false
+  }
+
+  clickUpdateButton = async({ page }) => {
+    await page.locator('.el-button.el-button--small.is-plain',{ hasText: '更新' }).click()
+  }
 }
 
 // 匯出實例化後的物件
