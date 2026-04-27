@@ -22,7 +22,7 @@ class Tools {
   gotoUrl = async ({ page, url }) => {
     await page.goto(url, {
       waitUntil: 'networkidle',
-      timeout: 60000
+      timeout: 60000,
     })
 
     // ✅ 確認 URL（如果會變）
@@ -58,7 +58,7 @@ class Tools {
   
     // 👉 先記錄舊資料（整列，比只看一個欄位更準）
     const beforeList = await rows.evaluateAll(rows =>
-      rows.map(row => row.innerText)
+      rows.map(row => row.innerText),
     )
   
     // 👉 點刷新
@@ -79,7 +79,7 @@ class Tools {
         return JSON.stringify(newList) !== JSON.stringify(oldList)
       },
       beforeList,
-      { timeout: 10000 }
+      { timeout: 10000 },
     )
   }
 
@@ -87,24 +87,24 @@ class Tools {
     const result = await page.$$eval(
       'tbody tr', rows => {
         return rows
-         .map(row => {
-          const getText = (selector) =>
-            row.querySelector(selector)?.innerText?.trim()
-          // 對應欄位
-          let name = getText('.el-table_1_column_5 .cell') // MB114
-          let balanceText = getText('.el-table_1_column_6.el-table__cell') // 1000
-          let accountId = getText('.el-table_1_column_9 .cell span') // 電話
-          if (name === undefined) return null
-          if (name === '') name = '總共'
+          .map(row => {
+            const getText = (selector) =>
+              row.querySelector(selector)?.innerText?.trim()
+            // 對應欄位
+            let name = getText('.el-table_1_column_5 .cell') // MB114
+            let balanceText = getText('.el-table_1_column_6.el-table__cell') // 1000
+            let accountId = getText('.el-table_1_column_9 .cell span') // 電話
+            if (name === undefined) return null
+            if (name === '') name = '總共'
 
-          return {
-            name: name,
-            balance: balanceText,
-            accountId: accountId
-          }
-         })
-         .filter(Boolean)
-      }
+            return {
+              name,
+              balance: balanceText,
+              accountId,
+            }
+          })
+          .filter(Boolean)
+      },
     )
 
     return result
@@ -130,7 +130,7 @@ class Tools {
     const numbers = await pagerItems.allTextContents()
 
     const max = Math.max(
-      ...numbers.map(n => parseInt(n.trim(), 10))
+      ...numbers.map(n => parseInt(n.trim(), 10)),
     )
 
     return max
@@ -144,13 +144,13 @@ class Tools {
     await page.locator('.el-message--success').waitFor({ timeout: 120000 })
     
     await page.waitForTimeout(3000)
-}
+  }
 
   clickBatchUpdatButton = async ({ page }) => {
     try {
       const btn = page.locator(
         'button.el-button--warning:not(.is-disabled)',
-        { hasText: '更新' }
+        { hasText: '更新' },
       )
   
       await btn.waitFor({ state: 'visible', timeout: 10000 })
@@ -158,7 +158,7 @@ class Tools {
       // 🔥 核心：點擊 + 等 loading
       await Promise.all([
         btn.click(),
-        btn.locator('.el-loading-mask').waitFor({ state: 'detached' }).catch(() => {})
+        btn.locator('.el-loading-mask').waitFor({ state: 'detached' }).catch(() => {}),
       ])
   
       return true
@@ -191,7 +191,7 @@ class Tools {
   }
 
   clickUpdateButton = async({ page }) => {
-    await page.locator('.el-button.el-button--small.is-plain',{ hasText: '更新' }).click()
+    await page.locator('.el-button.el-button--small.is-plain', { hasText: '更新' }).click()
   }
 }
 

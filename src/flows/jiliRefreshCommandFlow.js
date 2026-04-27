@@ -1,4 +1,4 @@
-import { runJiliChannelProcess,runJiliMarchantNameProcess } from '../usecases/jili/runJiliChannelProcess.js'
+import { runJiliChannelProcess, runJiliMarchantNameProcess } from '../usecases/jili/runJiliChannelProcess.js'
 
 const registerJiliRefreshCommandFlow = async ({ 
   telegramTools,
@@ -7,46 +7,75 @@ const registerJiliRefreshCommandFlow = async ({
   merchantList,
   tools,
 }) => {
-  telegramTools.onMessage({ handler: async msg => {
-    if (msg.text !== '/start') return
+  let isProcessing = false
 
+  const runRefresh = async () => {
     const refreshPage = {}
     for (const name of channelNameList) {
       refreshPage[name] = await jiliContext.newPage()
     }
     const singleAccountRefreshPage = await jiliContext.newPage()
-    
-    const promiseList = channelNameList.map(name =>
+
+    const channelPromiseList = channelNameList.map(name =>
       runJiliChannelProcess({
-        tools: tools,
+        tools,
         page: refreshPage[name],
-        name: name
-      })
+        name,
+      }),
     )
-    promiseList.push(runJiliMarchantNameProcess({
-      tools: tools,
-      page: singleAccountRefreshPage,
-      merchantList: merchantList,
-    }))
-    const resultList = await Promise.all(promiseList)
+
+    const resultList = await Promise.all([
+      ...channelPromiseList,
+      runJiliMarchantNameProcess({
+        tools,
+        page: singleAccountRefreshPage,
+        merchantList,
+      }),
+    ])
 
     const channelList = resultList.slice(0, -1)
     const newGalaxyCollectionList = resultList.at(-1)
 
-    const text = `
+    return `
 通道:
 ${channelList.join(', ')},
 
-新银规集:
+新银归集:
 ${newGalaxyCollectionList.join(', ')}
 >>> 皆已刷新完成
 `
+  }
 
-    await telegramTools.sendGroupMessage({
-      chatId: msg.chat.id,
-      text: text
-    })
-      } })
-    }
+  telegramTools.onMessage({
+    handler: async msg => {
+      if (msg.text !== '/start') return
+
+      if (isProcessing) {
+        await telegramTools.sendGroupMessage({
+          chatId: msg.chat.id,
+          text: '正在處理中，請稍後再試',
+        })
+        return
+      }
+
+      isProcessing = true
+      try{
+        const text = await runRefresh()
+        await telegramTools.sendGroupMessage({
+          chatId: msg.chat.id,
+          text,
+        })
+      } catch (err) {
+        console.error('[流程] 刷新指令處理失敗:', err?.message ?? err)
+        await telegramTools.sendGroupMessage({
+          chatId: msg.chat.id,
+          text: '刷新指令处理失败，请两分钟后重试,如果连续发生超过两次,请自行手动刷新,并等Jason上班时通知他,感谢!',
+        })
+      } finally {
+        isProcessing = false
+      }
+    }, 
+  })
+}
 
 export default registerJiliRefreshCommandFlow

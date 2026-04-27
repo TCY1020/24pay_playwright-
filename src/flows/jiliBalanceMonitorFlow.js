@@ -1,6 +1,6 @@
+import formatJiliBalanceReport from '../usecases/jili/formatJiliBalanceReport.js'
 import getGcashTooLowBalanceList from '../usecases/jili/getGcashTooLowBalanceList.js'
 import getPayMayaAllAccountBalance from '../usecases/jili/getPayMayaAllAccountBalance.js'
-import formatJiliBalanceReport from '../usecases/jili/formatJiliBalanceReport.js'
 
 const startJiliBalanceMonitorFlow = async ({
   tools,
@@ -19,15 +19,15 @@ const startJiliBalanceMonitorFlow = async ({
     try {
       const gcashLowBalanceThreshold = config.GCASH_LOW_BALANCE_THRESHOLD
       const lowAccountList = await getGcashTooLowBalanceList({
-        tools: tools,
+        tools,
         page: jiliPage,
-        lessAmount: gcashLowBalanceThreshold
+        lessAmount: gcashLowBalanceThreshold,
       })
-      const payMayaBalanceData = await getPayMayaAllAccountBalance({ tools: tools, page: jiliPage })
+      const payMayaBalanceData = await getPayMayaAllAccountBalance({ tools, page: jiliPage })
       const message = formatJiliBalanceReport({
         lowList: lowAccountList,
         threshold: gcashLowBalanceThreshold,
-        payMayaBalance: payMayaBalanceData?.balance ?? 'N/A'
+        payMayaBalance: payMayaBalanceData?.balance ?? 'N/A',
       })
       await telegramTools.sendGroupMessage({ chatId: groupChatId, text: message })
     } catch (err) {

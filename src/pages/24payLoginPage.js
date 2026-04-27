@@ -2,7 +2,7 @@ import { generate } from 'otplib'
 
 const login24pay = async ({ page, config }) => {
   const secret = config.SECRET_24PAY
-  const token = await generate({ secret: secret })
+  const token = await generate({ secret })
 
   await page.goto('https://www.24pay.sbs/home/login')
   await page.locator('[name="Name"]').type(config.ACCOUNT_24PAY, { delay: 100 })
