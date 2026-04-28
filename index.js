@@ -7,12 +7,11 @@ import login24pay from './src/pages/24payLoginPage.js'
 import checkJiliLoginPage from './src/pages/jiliLoginPage.js'
 import ensureJiliAuthState from './src/usecases/jili/ensureJiliAuthState.js'
 import TelegramTools from './telegram.js'
-import Tools from './tools.js'
+import tools from './tools.js'
 
 
 // 1) 基礎設定與共用工具初始化
 const config = getConfig()
-const tools = new Tools({ config })
 const telegramTools = new TelegramTools({ token: config.TELEGRAM_BOT_TOKEN })
 
 // 2) 啟動 Telegram polling（後續 flow 會註冊訊息事件）
@@ -43,8 +42,9 @@ await checkJiliLoginPage({ page: jiliPage, config })
 registerJiliRefreshCommandFlow({ 
   telegramTools,
   channelNameList: config.REFRESH_CHANNEL_NAME_LIST,
-  jiliContext, 
   merchantList: config.MERCHANT_LIST,
+  account: config.ACCOUNT_JILI,
+  jiliContext, 
   tools,
 })
 

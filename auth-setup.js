@@ -10,10 +10,9 @@ import path from 'path'
 import { chromium } from 'playwright'
 
 import { getConfig } from './config.js'
-import Tools from './tools.js'
+import tools from './tools.js'
 
 const config = getConfig()
-const tools = new Tools({ config })
 
 const backstage = process.env.BACKSTAGE || 'jili'
 
@@ -26,7 +25,7 @@ const browser = await chromium.launch({ headless: false })
 const context = await browser.newContext()
 const page = await context.newPage()
 try {
-  await tools.login({ page, backstage })
+  await tools.login({ page, backstage, config })
   await fs.promises.mkdir(path.dirname(storageStatePath), { recursive: true })
   await context.storageState({ path: storageStatePath })
   console.log('已寫入 storageState，可把此檔放到伺服器並以 HEADLESS=1 執行主程式。')

@@ -1,10 +1,11 @@
 import map from '../../../map.js'
 
-const runJiliChannelProcess = async ({ tools, page, name }) => {
+const runJiliChannelProcess = async ({ tools, page, name, chatId, telegramTools, account }) => {
   const selectMap = map.selectMap
   await tools.gotoUrl({
     page,
     url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account',
+    account,
   })
 
   await tools.selectChannelName({
@@ -22,7 +23,16 @@ const runJiliChannelProcess = async ({ tools, page, name }) => {
   while (true) {
     await tools.chouseAllCheckBox({ page })
     await tools.clickBatchUpdatButton({ page })
-    await tools.waitSuccessMessage({ page })
+    const result = await tools.waitSubmitResultMessage({ page })
+    if (result) {
+      await telegramTools.sendGroupMessage({
+        chatId,
+        text: `通道(帐号): ${result} 更新失败,请手动刷新该通道的所有帐号`,
+      })
+
+      break
+    }
+
     const nextBtn = page.locator('.btn-next')
 
     const isDisabled = await nextBtn.getAttribute('aria-disabled')
@@ -41,10 +51,11 @@ const runJiliChannelProcess = async ({ tools, page, name }) => {
   return name
 }
 
-const runJiliMarchantNameProcess = async ({ tools, page, merchantList }) => {
+const runJiliMarchantNameProcess = async ({ tools, page, merchantList, chatId, telegramTools, account }) => {
   await tools.gotoUrl({
     page,
     url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account',
+    account,
   })
 
   for (const merchant of merchantList) {
@@ -55,7 +66,13 @@ const runJiliMarchantNameProcess = async ({ tools, page, merchantList }) => {
       break
     }
     await tools.clickUpdateButton({ page })
-    await tools.waitSuccessMessage({ page })
+    const result = await tools.waitSubmitResultMessage({ page })
+    if (result) {
+      await telegramTools.sendGroupMessage({
+        chatId,
+        text: `新银归集(帐号): ${result} 更新失败,请手动刷新`,
+      })
+    }
   }
   await page.close()
 
