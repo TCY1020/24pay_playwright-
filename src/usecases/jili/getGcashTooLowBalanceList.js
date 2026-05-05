@@ -11,12 +11,22 @@ const getGcashTooLowBalanceList = async ({ tools, page, lessAmount }) => {
   await tools.selectPageSize({ page, pageSizeIndex: selectMap.pageSize[200] })
 
   await tools.refreshAndWaitForBalanceTable({ page })
-  const gcashBalanceList = await tools.getBalanceList({ page })
+  const rows = await tools.getBalanceList({ page })
+  const totalSummaryRow = rows.pop()
 
-  return tools.balanceListFilter({
-    balanceList: gcashBalanceList,
+  const lowBalanceList = tools.balanceListFilter({
+    balanceList: rows,
     lessAmount,
   })
+
+  const sortedLowBalanceList = tools.getAttayAscendingSort({
+    array: lowBalanceList,
+    key: 'balance',
+  })
+
+  const result = [...sortedLowBalanceList, totalSummaryRow]
+
+  return result
 }
 
 export default getGcashTooLowBalanceList

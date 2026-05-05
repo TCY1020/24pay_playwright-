@@ -1,6 +1,6 @@
 import formatJiliBalanceReport from '../usecases/jili/formatJiliBalanceReport.js'
+import getChannelAllAccountBalance from '../usecases/jili/getChannelAllAccountBalance.js'
 import getGcashTooLowBalanceList from '../usecases/jili/getGcashTooLowBalanceList.js'
-import getChannelAllAccountBalance from '../usecases/jili/getPayMayaAllAccountBalance.js'
 
 const startJiliBalanceMonitorFlow = async ({
   tools,
@@ -18,7 +18,7 @@ const startJiliBalanceMonitorFlow = async ({
 
     try {
       const gcashLowBalanceThreshold = config.GCASH_LOW_BALANCE_THRESHOLD
-      const lowAccountList = await getGcashTooLowBalanceList({
+      const gcashLowAccountList = await getGcashTooLowBalanceList({
         tools,
         page: jiliPage,
         lessAmount: gcashLowBalanceThreshold,
@@ -26,8 +26,8 @@ const startJiliBalanceMonitorFlow = async ({
       const payMayaBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'PayMaya' })
       const MayaBusinessBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'gcashwap-2' })
       const message = formatJiliBalanceReport({
-        lowList: lowAccountList,
         threshold: gcashLowBalanceThreshold,
+        lowList: gcashLowAccountList,
         payMayaBalance: payMayaBalanceData?.balance ?? 'N/A',
         MayaBusinessBalance: MayaBusinessBalanceData?.balance ?? 'N/A',
       })

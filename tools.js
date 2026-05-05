@@ -107,7 +107,7 @@ const tools = {
 
   balanceListFilter: ({ balanceList, lessAmount }) => {
     const filtered = balanceList.filter(item => {
-      return item.name === '總共' || item.balance < lessAmount
+      return item.balance < lessAmount
     })
 
     return filtered
@@ -190,6 +190,18 @@ const tools = {
 
     return false
   },
+  
+  getAttayAscendingSort: ({ array, key = null }) => {
+    let result = []
+    if (key) {
+      result = [...array].sort((a, b) => Number(a[key]) - Number(b[key]))
+    } else {
+      result = [...array].sort((a, b) => Number(a) - Number(b))
+    }
+
+    return result
+  },
+
 
   clickUpdateButton: async ({ page }) => {
     await page.locator('.el-button.el-button--small.is-plain', { hasText: '更新' }).click()
