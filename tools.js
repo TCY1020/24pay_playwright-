@@ -1,13 +1,18 @@
+import { generate } from 'otplib'
+
 const tools = {
-  login: async ({ page, backstage = 'jili', account, config }) => {
-    let url
+  login: async ({ page, backstage = 'jili', config }) => {
     console.log(backstage)
 
+    let account
     if (backstage === 'jili') {
-      url = 'https://ptrcqps9.2424ph.com/#/login'
       account = config.ACCOUNT_JILI
+      await page.goto('https://ptrcqps9.2424ph.com/#/login')
+      const token = await generate({ secret: config.SECRET_JILI })
+      await page.locator('[placeholder="用户名 / 手机 / 邮箱"]').type(config.ACCOUNT_JILI, { delay: 100 })
+      await page.locator('[placeholder="请输入密码"]').type(config.PASSWORD_JILI, { delay: 100 })
+      await page.locator('[placeholder="谷歌验证码,未设置不填写"]').type(token, { delay: 100 })
     }
-    await page.goto(url)
     console.log('請手動登入')
 
     await page.waitForSelector(`text=${account}`, { timeout: 300000 })
