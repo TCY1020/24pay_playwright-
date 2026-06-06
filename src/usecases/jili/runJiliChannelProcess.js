@@ -60,12 +60,13 @@ const runJiliMarchantNameProcess = async ({ tools, page, merchantList, chatId, t
 
   for (const merchant of merchantList) {
     await tools.inputMerchantName({ page, merchantName: merchant })
-    await tools.refreshAndWaitForBalanceTable({ page })
+    await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click()
+    await tools.chouseAllCheckBox({ page })
+    await tools.clickBatchUpdatButton({ page })
     const isOnlyone = await tools.checkTrOnlyone({ page })
     if (isOnlyone) {
       break
     }
-    await tools.clickUpdateButton({ page })
     const result = await tools.waitSubmitResultMessage({ page })
     if (result) {
       await telegramTools.sendGroupMessage({

@@ -206,11 +206,6 @@ const tools = {
 
     return result
   },
-
-
-  clickUpdateButton: async ({ page }) => {
-    await page.locator('.el-button.el-button--small.is-plain', { hasText: '更新' }).click()
-  },
 }
 
 export default tools 
