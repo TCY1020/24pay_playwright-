@@ -135,22 +135,27 @@ const tools = {
     return await page.locator('.el-checkbox__input').nth(0).click()
   },
 
-  waitSubmitResultMessage: async ({ page }) => {
-    const successEl = page.locator('.el-message--success')
-    const errorEl = page.locator('.el-message--error')
-    const result = await Promise.race([
-      successEl.waitFor({ timeout: 180000 }).then(() => 'success'),
-      errorEl.waitFor({ timeout: 180000 }).then(() => 'error'),
-    ])
+  waitSubmitResultMessage: async ({ page, name }) => {
+    try{
+      const successEl = page.locator('.el-message--success')
+      await successEl.waitFor({ timeout: 180000 }).then(() => 'success'),
+  
+      await page.waitForTimeout(3000)
 
-    if (result === 'error') {
-      const errBox = errorEl.last()
-      const account = (await errBox.locator('.message-title strong').textContent())?.trim() ?? ''
+      return {
+        name,
+        isMerchant: false,
+        message: 'success',
+      }
+    }catch(err){
+      err.message = {
+        name,
+        isMerchant: false,
+        message: err.message,
+      }
 
-      return account
+      return err.message
     }
-
-    await page.waitForTimeout(3000)
   },
 
   clickBatchUpdatButton: async ({ page }) => {
