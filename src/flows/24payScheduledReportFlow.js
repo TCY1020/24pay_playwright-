@@ -3,6 +3,8 @@ const config = getConfig()
 const REPORT_HOURS_UTC8 = config.REPORT_HOURS_UTC8
 const TOP_MERCHANT_COUNT = config.TOP_MERCHANT_COUNT
 const NOTIFY_USER_ID = config.NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID
+const MERCHANT_LIST_PAGE = config.MERCHANT_LIST_PAGE
+const PAYMENT_STATS_PAGE = config.PAYMENT_STATS_PAGE
 const UTC8_TIME_ZONE = 'Asia/Taipei'
 
 const formatNotifyUser = userId => {
@@ -111,7 +113,7 @@ const openPagination = async ({ page, mainMenuId, subMenuId }) => {
 const getMerchantList = async ({ page }) => {
   await page.waitForLoadState('domcontentloaded')
 
-  const merchantIframe = page.locator('iframe[tab-id="nav_3"]').first()
+  const merchantIframe = page.locator(`iframe[tab-id="${MERCHANT_LIST_PAGE.subMenuId}"]`).first()
   await merchantIframe.waitFor({ state: 'attached', timeout: 12000 })
 
   const frameHandle = await merchantIframe.elementHandle()
@@ -162,16 +164,16 @@ const getMerchantList = async ({ page }) => {
 }
 
 const submitMerchant = async ({ page }) => {
-  const merchantTab = page.locator('ul#tabName > li[lay-id="nav_3"]').first()
+  const merchantTab = page.locator(`ul#tabName > li[lay-id="${MERCHANT_LIST_PAGE.subMenuId}"]`).first()
   await merchantTab.waitFor({ state: 'visible', timeout: 12000 })
   await merchantTab.click()
   await page
-    .locator('ul#tabName > li[lay-id="nav_3"].layui-this')
+    .locator(`ul#tabName > li[lay-id="${MERCHANT_LIST_PAGE.subMenuId}"].layui-this`)
     .first()
     .waitFor({ state: 'visible', timeout: 10000 })
 
   const submitButton = page
-    .frameLocator('iframe[tab-id="nav_3"]')
+    .frameLocator(`iframe[tab-id="${MERCHANT_LIST_PAGE.subMenuId}"]`)
     .locator('#submitSearch')
   await submitButton.waitFor({ state: 'visible', timeout: 10000 })
   await submitButton.click()
@@ -199,7 +201,7 @@ const getTopMerchantList = ({ merchantList, topCount = 5 }) => {
 const getTodayPaymentOrderStats = async ({ page }) => {
   await page.waitForLoadState('domcontentloaded')
 
-  const merchantIframe = page.locator('iframe[tab-id="nav_18"]').first()
+  const merchantIframe = page.locator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`).first()
   await merchantIframe.waitFor({ state: 'attached', timeout: 12000 })
 
   const frameHandle = await merchantIframe.elementHandle()
@@ -257,16 +259,16 @@ const getTodayPaymentOrderStats = async ({ page }) => {
 }
 
 const submitTodayPaymentOrderStats = async ({ page }) => {
-  const merchantTab = page.locator('ul#tabName > li[lay-id="nav_18"]').first()
+  const merchantTab = page.locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"]`).first()
   await merchantTab.waitFor({ state: 'visible', timeout: 12000 })
   await merchantTab.click()
   await page
-    .locator('ul#tabName > li[lay-id="nav_18"].layui-this')
+    .locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"].layui-this`)
     .first()
     .waitFor({ state: 'visible', timeout: 10000 })
   
   const submitButton = page
-    .frameLocator('iframe[tab-id="nav_18"]')
+    .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
     .locator('#submitSearch')
   await submitButton.waitFor({ state: 'visible', timeout: 10000 })
   await submitButton.click()
@@ -300,9 +302,9 @@ ${dateText}總跑量 ${formattedTotalPayAmount}`,
 
 const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId }) => {
   // 開啟商戶列表
-  await openPagination({ page, mainMenuId: '#nav_2', subMenuId: '#nav_3' })
+  await openPagination({ page, mainMenuId: `#${MERCHANT_LIST_PAGE.mainMenuId}`, subMenuId: `#${MERCHANT_LIST_PAGE.subMenuId}` })
   // 開啟代收訂單統計
-  await openPagination({ page, mainMenuId: '#nav_19', subMenuId: '#nav_20' })
+  await openPagination({ page, mainMenuId: `#${PAYMENT_STATS_PAGE.mainMenuId}`, subMenuId: `#${PAYMENT_STATS_PAGE.subMenuId}` })
 
   // 設定下次執行時間
   const scheduleNext = () => {

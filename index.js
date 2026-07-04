@@ -30,7 +30,7 @@ const _24payContext= await browser.newContext()
 const _24payPage = await _24payContext.newPage()
 await login24pay({ page: _24payPage, config })
 start24payWsForwardFlow({ page: _24payPage, telegramTools, groupChatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID, config })
-await start24payScheduledReportFlow({ page: _24payPage, telegramTools, groupChatId: config.PHILIPPINES_OPERATION_GROUP_CHAT_ID })
+await start24payScheduledReportFlow({ page: _24payPage, telegramTools, groupChatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID })
 
 
 // 6) jili：建立已登入 context 並確認登入狀態
