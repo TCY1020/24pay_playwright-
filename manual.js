@@ -59,7 +59,7 @@ const manual = {
     } finally {
       await browser.close()
     }
-  }
+  },
 }
 
 export default manual

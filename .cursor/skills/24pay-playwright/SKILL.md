@@ -41,7 +41,7 @@ npm run dev          # 啟動 index.js（headless browser）
 
 實際值由部署環境提供；修改程式時對照 `index.js` 與各 flow 取用欄位即可。
 
-- `TELEGRAM_BOT_TOKEN`、`TELEGRAM_GROUP_CHAT_ID`
+- `TELEGRAM_BOT_TOKEN`、`BALANCE_NOTIFICATION_GROUP_CHAT_ID`
 - `RESEARCH_INTERVAL_MS`（Jili 餘額輪詢間隔）
 - `SECRET_24PAY`、`ACCOUNT_24PAY`、`PASSWORD_24PAY`（24pay + TOTP）
 - `ACCOUNT_JILI`、`ACCOUNT_JILI_ADMIN`（登入成功時 `label` 文字比對用帳號特徵）
@@ -61,7 +61,7 @@ npm run dev          # 啟動 index.js（headless browser）
 
 1. `config.json` 是否存在且 JSON 合法。
 2. `jili_auth.json` 是否存在、是否過期（`tools.gotoUrl` 會以畫面文字判斷未登入）。
-3. Telegram：`TELEGRAM_GROUP_CHAT_ID` 與 bot 是否已在群內；polling 是否與其他程序重複佔用 token。
+3. Telegram：`BALANCE_NOTIFICATION_GROUP_CHAT_ID` 與 bot 是否已在群內；polling 是否與其他程序重複佔用 token。
 4. Playwright：本機除錯可暫時將 `index.js` 的 `BrowserTools({ headless: true })` 改為 `false`（僅限本機，勿把 headed 當預設提交）。
 
 ## 安全

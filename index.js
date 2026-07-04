@@ -1,4 +1,5 @@
 import { getConfig } from './config.js'
+import start24payScheduledReportFlow from './src/flows/24payScheduledReportFlow.js'
 import start24payWsForwardFlow from './src/flows/24payWsForwardFlow.js'
 import startJiliBalanceMonitorFlow from './src/flows/jiliBalanceMonitorFlow.js'
 import registerJiliRefreshCommandFlow from './src/flows/jiliRefreshCommandFlow.js'
@@ -20,8 +21,6 @@ telegramTools.startPolling()
 // 3) 啟動前先驗證 jili 登入狀態檔是否存在
 const authJsonPathJili = ensureJiliAuthState()
 
-const groupChatId = config.TELEGRAM_GROUP_CHAT_ID
-
 // 4) 共用 browser 實例（24pay / jili 各自使用獨立 context）
 const browserTools = new BrowserTools({ headless: true })
 const browser = await browserTools.launchBrowser()
@@ -30,7 +29,8 @@ const browser = await browserTools.launchBrowser()
 const _24payContext= await browser.newContext()
 const _24payPage = await _24payContext.newPage()
 await login24pay({ page: _24payPage, config })
-start24payWsForwardFlow({ page: _24payPage, telegramTools, groupChatId, config })
+start24payWsForwardFlow({ page: _24payPage, telegramTools, groupChatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID, config })
+await start24payScheduledReportFlow({ page: _24payPage, telegramTools, groupChatId: config.PHILIPPINES_OPERATION_GROUP_CHAT_ID })
 
 
 // 6) jili：建立已登入 context 並確認登入狀態
@@ -53,6 +53,6 @@ await startJiliBalanceMonitorFlow({
   tools,
   jiliPage,
   telegramTools,
-  groupChatId,
+  groupChatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID,
   config, 
 })
