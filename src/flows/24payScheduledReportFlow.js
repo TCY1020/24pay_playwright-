@@ -1,9 +1,7 @@
 import { getConfig } from '../../config.js'
 const config = getConfig()
 const REPORT_HOURS_UTC8 = config.REPORT_HOURS_UTC8
-const TOP_MERCHANT_COUNT = config.TOP_MERCHANT_COUNT
 const NOTIFY_USER_ID = config.NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID
-const MERCHANT_LIST_PAGE = config.MERCHANT_LIST_PAGE
 const PAYMENT_STATS_PAGE = config.PAYMENT_STATS_PAGE
 const UTC8_TIME_ZONE = 'Asia/Taipei'
 
@@ -110,94 +108,6 @@ const openPagination = async ({ page, mainMenuId, subMenuId }) => {
   await targetLink.click()
 }
 
-const getMerchantList = async ({ page }) => {
-  await page.waitForLoadState('domcontentloaded')
-
-  const merchantIframe = page.locator(`iframe[tab-id="${MERCHANT_LIST_PAGE.subMenuId}"]`).first()
-  await merchantIframe.waitFor({ state: 'attached', timeout: 12000 })
-
-  const frameHandle = await merchantIframe.elementHandle()
-  const frame = await frameHandle?.contentFrame()
-
-  if (!frame) {
-    console.warn('[getMerchantList] 找不到商戶列表 iframe 內容')
-
-    return []
-  }
-
-  const rows = frame.locator('div.layui-table-body.layui-table-main table > tbody > tr[data-index]')
-  await rows.first().waitFor({ state: 'attached', timeout: 12000 })
-
-  const rowCount = await rows.count()
-  const merchantList = []
-
-  for (let i = 0; i < rowCount; i += 1) {
-    const row = rows.nth(i)
-    const merchantNoCell = row.locator('td[data-field="MerchantNo"]').first()
-    const balanceCell = row.locator('td[data-field="Balance"]').first()
-    const merchantNoHtml = (await merchantNoCell.innerHTML()) ?? ''
-
-    const merchantNoRaw =
-      (await merchantNoCell.getAttribute('data-content')) ??
-      (await merchantNoCell.innerText()) ??
-      ''
-    const balanceRaw =
-      (await balanceCell.getAttribute('data-content')) ??
-      (await balanceCell.innerText()) ??
-      '0'
-
-    const merchantNo = merchantNoRaw.trim()
-    const balance = Number.parseFloat(balanceRaw.replace(/,/g, '').trim())
-
-    if (!merchantNo) {
-      continue
-    }
-
-    merchantList.push({
-      merchantNo,
-      balance: Number.isFinite(balance) ? balance : 0,
-      isdev: merchantNoHtml.includes('对接中'),
-    })
-  }
-
-  return merchantList
-}
-
-const submitMerchant = async ({ page }) => {
-  const merchantTab = page.locator(`ul#tabName > li[lay-id="${MERCHANT_LIST_PAGE.subMenuId}"]`).first()
-  await merchantTab.waitFor({ state: 'visible', timeout: 12000 })
-  await merchantTab.click()
-  await page
-    .locator(`ul#tabName > li[lay-id="${MERCHANT_LIST_PAGE.subMenuId}"].layui-this`)
-    .first()
-    .waitFor({ state: 'visible', timeout: 10000 })
-
-  const submitButton = page
-    .frameLocator(`iframe[tab-id="${MERCHANT_LIST_PAGE.subMenuId}"]`)
-    .locator('#submitSearch')
-  await submitButton.waitFor({ state: 'visible', timeout: 10000 })
-  await submitButton.click()
-}
-
-const sortMerchantBalance = ({ merchantList, isDev = null }) => {
-  let filteredMerchantList = merchantList
-
-  if (isDev === true) {
-    filteredMerchantList = merchantList.filter(merchant => merchant.isdev && merchant.merchantNo !== 'testno')
-  } else if (isDev === false) {
-    filteredMerchantList = merchantList.filter(merchant => !merchant.isdev && merchant.merchantNo !== 'testno')
-  }else if(isDev === null) {
-    filteredMerchantList = merchantList.filter(merchant => merchant.merchantNo !== 'testno')
-  }
-
-
-  return filteredMerchantList.sort((a, b) => b.balance - a.balance)
-}
-
-const getTopMerchantList = ({ merchantList, topCount = 5 }) => {
-  return merchantList.slice(0, topCount)
-}
-
 const getTodayPaymentOrderStats = async ({ page }) => {
   await page.waitForLoadState('domcontentloaded')
 
@@ -213,7 +123,8 @@ const getTodayPaymentOrderStats = async ({ page }) => {
     return []
   }
 
-  const rows = frame.locator('div.layui-table-body.layui-table-main table > tbody > tr[data-index]')
+  const mainTableBody = frame.locator('div.layui-table-body.layui-table-main table > tbody').first()
+  const rows = mainTableBody.locator(':scope > tr[data-index]')
   await rows.first().waitFor({ state: 'attached', timeout: 12000 })
 
   const rowCount = await rows.count()
@@ -225,33 +136,60 @@ const getTodayPaymentOrderStats = async ({ page }) => {
     return Number.isFinite(parsed) ? parsed : 0
   }
 
+  const getFieldValue = async ({ row, field }) => {
+    const cell = row.locator(`td[data-field="${field}"]`).first()
+
+    return (
+      (await cell.getAttribute('data-content')) ??
+      (await cell.innerText()) ??
+      ''
+    ).trim()
+  }
+
   for (let i = 0; i < rowCount; i += 1) {
     const row = rows.nth(i)
+    const detailRow = row
+      .locator('xpath=following-sibling::tr[contains(@class, "noHover") and contains(@class, "childTr")][1]')
+      .first()
+    const detailRows = detailRow.locator('div.layui-table-body.layui-table-main table > tbody > tr[data-index]')
+    const detailCount = await detailRows.count()
+    const merchantList = []
 
-    const getFieldValue = async field => {
-      const cell = row.locator(`td[data-field="${field}"]`).first()
+    for (let j = 0; j < detailCount; j += 1) {
+      const detailItem = detailRows.nth(j)
 
-      return (
-        (await cell.getAttribute('data-content')) ??
-        (await cell.innerText()) ??
-        ''
-      ).trim()
+      merchantList.push({
+        Date: await getFieldValue({ row: detailItem, field: 'Date' }),
+        MerchantNo: await getFieldValue({ row: detailItem, field: 'MerchantNo' }),
+        CompanyName: await getFieldValue({ row: detailItem, field: 'CompanyName' }),
+        TotalCount: toNumber(await getFieldValue({ row: detailItem, field: 'TotalCount' })),
+        OrderSuccessCount: toNumber(await getFieldValue({ row: detailItem, field: 'OrderSuccessCount' })),
+        SuccessRate: toNumber(await getFieldValue({ row: detailItem, field: 'SuccessRate' })),
+        OrderTotalAmount: toNumber(await getFieldValue({ row: detailItem, field: 'OrderTotalAmount' })),
+        OrderSuccessAmount: toNumber(await getFieldValue({ row: detailItem, field: 'OrderSuccessAmount' })),
+        OrderFailAmount: toNumber(await getFieldValue({ row: detailItem, field: 'OrderFailAmount' })),
+        OrderPayAmount: toNumber(await getFieldValue({ row: detailItem, field: 'OrderPayAmount' })),
+        OrderProfitAmount: toNumber(await getFieldValue({ row: detailItem, field: 'OrderProfitAmount' })),
+        ThirdPartyPayChannelType: await getFieldValue({ row: detailItem, field: 'ThirdPartyPayChannelType' }),
+        MerchantPayType: await getFieldValue({ row: detailItem, field: 'MerchantPayType' }),
+      })
     }
 
     todayPaymentOrderStats.push({
-      Date: await getFieldValue('Date'),
-      MerchantNo: await getFieldValue('MerchantNo'),
-      CompanyName: await getFieldValue('CompanyName'),
-      TotalCount: toNumber(await getFieldValue('TotalCount')),
-      OrderSuccessCount: toNumber(await getFieldValue('OrderSuccessCount')),
-      SuccessRate: toNumber(await getFieldValue('SuccessRate')),
-      OrderTotalAmount: toNumber(await getFieldValue('OrderTotalAmount')),
-      OrderSuccessAmount: toNumber(await getFieldValue('OrderSuccessAmount')),
-      OrderFailAmount: toNumber(await getFieldValue('OrderFailAmount')),
-      OrderPayAmount: toNumber(await getFieldValue('OrderPayAmount')),
-      OrderProfitAmount: toNumber(await getFieldValue('OrderProfitAmount')),
-      ThirdPartyPayChannelType: await getFieldValue('ThirdPartyPayChannelType'),
-      MerchantPayType: await getFieldValue('MerchantPayType'),
+      Date: await getFieldValue({ row, field: 'Date' }),
+      MerchantNo: await getFieldValue({ row, field: 'MerchantNo' }),
+      CompanyName: await getFieldValue({ row, field: 'CompanyName' }),
+      TotalCount: toNumber(await getFieldValue({ row, field: 'TotalCount' })),
+      OrderSuccessCount: toNumber(await getFieldValue({ row, field: 'OrderSuccessCount' })),
+      SuccessRate: toNumber(await getFieldValue({ row, field: 'SuccessRate' })),
+      OrderTotalAmount: toNumber(await getFieldValue({ row, field: 'OrderTotalAmount' })),
+      OrderSuccessAmount: toNumber(await getFieldValue({ row, field: 'OrderSuccessAmount' })),
+      OrderFailAmount: toNumber(await getFieldValue({ row, field: 'OrderFailAmount' })),
+      OrderPayAmount: toNumber(await getFieldValue({ row, field: 'OrderPayAmount' })),
+      OrderProfitAmount: toNumber(await getFieldValue({ row, field: 'OrderProfitAmount' })),
+      ThirdPartyPayChannelType: await getFieldValue({ row, field: 'ThirdPartyPayChannelType' }),
+      MerchantPayType: await getFieldValue({ row, field: 'MerchantPayType' }),
+      merchantList,
     })
   }
 
@@ -259,9 +197,9 @@ const getTodayPaymentOrderStats = async ({ page }) => {
 }
 
 const submitTodayPaymentOrderStats = async ({ page }) => {
-  const merchantTab = page.locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"]`).first()
-  await merchantTab.waitFor({ state: 'visible', timeout: 12000 })
-  await merchantTab.click()
+  const paymentStatsTab = page.locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"]`).first()
+  await paymentStatsTab.waitFor({ state: 'visible', timeout: 12000 })
+  await paymentStatsTab.click()
   await page
     .locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"].layui-this`)
     .first()
@@ -274,7 +212,15 @@ const submitTodayPaymentOrderStats = async ({ page }) => {
   await submitButton.click()
 }
 
-const format24payScheduledReport = ({ merchantList, todayPaymentOrderStats }) => {
+const clickPaymentDownArrowKey = async ({ page }) => {
+  const downArrowKey = page
+  .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
+  .locator('tbody i.layui-icon.layui-icon-right')
+  await downArrowKey.waitFor({ state: 'visible', timeout: 10000 })
+  await downArrowKey.click()
+}
+
+const format24payScheduledReport = ({ todayPaymentOrderStats }) => {
   const nowParts = getUtc8Parts()
   const dateText = `${nowParts.month}/${nowParts.day} ${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`
 
@@ -283,26 +229,36 @@ const format24payScheduledReport = ({ merchantList, todayPaymentOrderStats }) =>
     todayPaymentOrderStats[0]
   const totalPayAmount = Number(summaryRow?.OrderPayAmount ?? 0)
   const formattedTotalPayAmount = Number.isFinite(totalPayAmount) ? totalPayAmount.toFixed(2) : '0.00'
+  const topMerchantList = Array.isArray(summaryRow?.merchantList)
+    ? summaryRow.merchantList.slice(0, 5)
+    : []
 
-  const topMerchantLines = merchantList.map(merchant => {
-    const balance = Number(merchant.balance ?? 0)
-    const formattedBalance = Number.isFinite(balance) ? balance.toFixed(2) : '0.00'
+  const topMerchantLines = topMerchantList.map(merchant => {
+    const successAmount = Number(merchant?.OrderSuccessAmount ?? 0)
+    const formattedSuccessAmount = Number.isFinite(successAmount) ? successAmount.toFixed(2) : '0.00'
+    const merchantNo = String(merchant?.MerchantNo ?? '').trim()
 
-    return `${merchant.merchantNo}: ${formattedBalance}`
+    return `${merchantNo}: ${formattedSuccessAmount}`
   })
 
+  const titleLine = `${dateText}總跑量 ${formattedTotalPayAmount}`
+  const notifyHeader = NOTIFY_USER_TEXT ? `${NOTIFY_USER_TEXT}\n${titleLine}` : titleLine
+
   return [
-    `${NOTIFY_USER_TEXT}
-${dateText}總跑量 ${formattedTotalPayAmount}`,
-    '',
+    notifyHeader,
     '前五家：',
     ...topMerchantLines,
   ].join('\n')
 }
 
+const sortMerchantBySuccessAmount = ({ todayPaymentOrderStats }) => {
+  let merchantList = todayPaymentOrderStats[0].merchantList
+  merchantList = merchantList.sort((a, b) => b.OrderSuccessAmount - a.OrderSuccessAmount)
+  todayPaymentOrderStats[0].merchantList = merchantList
+  return todayPaymentOrderStats
+}
+
 const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId }) => {
-  // 開啟商戶列表
-  await openPagination({ page, mainMenuId: `#${MERCHANT_LIST_PAGE.mainMenuId}`, subMenuId: `#${MERCHANT_LIST_PAGE.subMenuId}` })
   // 開啟代收訂單統計
   await openPagination({ page, mainMenuId: `#${PAYMENT_STATS_PAGE.mainMenuId}`, subMenuId: `#${PAYMENT_STATS_PAGE.subMenuId}` })
 
@@ -312,15 +268,12 @@ const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId 
 
     setTimeout(async () => {
       try {
-        await submitMerchant({ page })
-        await page.waitForTimeout(3000)
-        const merchantList = await getMerchantList({ page })
-        const sortedMerchantList = sortMerchantBalance({ merchantList, isDev: false })
-        const topMerchantList = getTopMerchantList({ merchantList: sortedMerchantList, topCount: TOP_MERCHANT_COUNT })
         await submitTodayPaymentOrderStats({ page })
         await page.waitForTimeout(3000)
+        await clickPaymentDownArrowKey({ page })
         const todayPaymentOrderStats = await getTodayPaymentOrderStats({ page })
-        const text = format24payScheduledReport({ merchantList: topMerchantList, todayPaymentOrderStats })
+        const sortedTodayPaymentOrderStats = sortMerchantBySuccessAmount({ todayPaymentOrderStats })
+        const text = format24payScheduledReport({ todayPaymentOrderStats:sortedTodayPaymentOrderStats })
         await telegramTools.sendGroupMessage({ chatId: groupChatId, text })
       } catch (err) {
         console.error('[24pay scheduled report] 發送失敗:', err?.message ?? err)
