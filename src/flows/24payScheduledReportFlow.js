@@ -196,7 +196,7 @@ const getTodayPaymentOrderStats = async ({ page }) => {
   return todayPaymentOrderStats
 }
 
-const submitTodayPaymentOrderStats = async ({ page }) => {
+const openPaymentOrderStatsMenu = async ({ page }) => {
   const paymentStatsTab = page.locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"]`).first()
   await paymentStatsTab.waitFor({ state: 'visible', timeout: 12000 })
   await paymentStatsTab.click()
@@ -204,7 +204,27 @@ const submitTodayPaymentOrderStats = async ({ page }) => {
     .locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"].layui-this`)
     .first()
     .waitFor({ state: 'visible', timeout: 10000 })
-  
+}
+
+const setPaymentOrderStatsMenuFilter = async ({ page, startDate, endDate }) => {
+  await openPaymentOrderStatsMenu({ page })
+
+  const startDateInput = page
+  .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
+  .locator('input[placeholder="开始时间"]')
+  await startDateInput.waitFor({ state: 'visible', timeout: 10000 })
+  await startDateInput.fill(startDate)
+
+  const endDateInput = page
+  .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
+  .locator('input[placeholder="结束时间"]')
+  await endDateInput.waitFor({ state: 'visible', timeout: 10000 })
+  await endDateInput.fill(endDate)
+}
+
+const submitPaymentOrderStats = async ({ page }) => {
+  await openPaymentOrderStatsMenu({ page })
+
   const submitButton = page
     .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
     .locator('#submitSearch')
@@ -268,7 +288,11 @@ const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId 
 
     setTimeout(async () => {
       try {
-        await submitTodayPaymentOrderStats({ page })
+        const nowParts = getUtc8Parts()
+        const startDate = `${nowParts.year}-${nowParts.month}-${nowParts.day} 00:00:00`
+        const endDate = `${nowParts.year}-${nowParts.month}-${nowParts.day} 23:59:59`
+        await setPaymentOrderStatsMenuFilter({ page, startDate, endDate })
+        await submitPaymentOrderStats({ page })
         await page.waitForTimeout(3000)
         await clickPaymentDownArrowKey({ page })
         const todayPaymentOrderStats = await getTodayPaymentOrderStats({ page })

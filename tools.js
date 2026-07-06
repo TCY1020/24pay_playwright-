@@ -7,14 +7,14 @@ const tools = {
     let account
     if (backstage === 'jili') {
       account = config.ACCOUNT_JILI
-      await page.goto('https://ptrcqps9.2424ph.com/#/login')
+      await page.goto(config.JILI_URL)
       const token = await generate({ secret: config.SECRET_JILI })
       await page.locator('[placeholder="用户名 / 手机 / 邮箱"]').type(config.ACCOUNT_JILI, { delay: 100 })
       await page.locator('[placeholder="请输入密码"]').type(config.PASSWORD_JILI, { delay: 100 })
       await page.locator('[placeholder="谷歌验证码,未设置不填写"]').type(token, { delay: 100 })
     }else if (backstage === 'admin') {
       account = config.ACCOUNT_JILI_ADMIN
-      await page.goto('https://ptrcqps9.2424ph.com/#/login')
+      await page.goto(config.JILI_URL)
       const token = await generate({ secret: config.SECRET_JILI_ADMIN })
       await page.locator('[placeholder="用户名 / 手机 / 邮箱"]').type(config.ACCOUNT_JILI_ADMIN, { delay: 100 })
       await page.locator('[placeholder="请输入密码"]').type(config.PASSWORD_JILI_ADMIN, { delay: 100 })
