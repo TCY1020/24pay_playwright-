@@ -1,7 +1,9 @@
 import { generate } from 'otplib'
 
+const UTC8_TIME_ZONE = 'Asia/Taipei'
+
 const tools = {
-  login: async ({ page, backstage = 'jili', config }) => {
+  async login({ page, backstage = 'jili', config }) {
     console.log(backstage)
 
     let account
@@ -12,7 +14,7 @@ const tools = {
       await page.locator('[placeholder="用户名 / 手机 / 邮箱"]').type(config.ACCOUNT_JILI, { delay: 100 })
       await page.locator('[placeholder="请输入密码"]').type(config.PASSWORD_JILI, { delay: 100 })
       await page.locator('[placeholder="谷歌验证码,未设置不填写"]').type(token, { delay: 100 })
-    }else if (backstage === 'admin') {
+    } else if (backstage === 'admin') {
       account = config.ACCOUNT_JILI_ADMIN
       await page.goto(config.JILI_URL)
       const token = await generate({ secret: config.SECRET_JILI_ADMIN })
@@ -33,7 +35,7 @@ const tools = {
     console.log(`${backstage} 登入成功`)
   },
 
-  gotoUrl: async ({ page, url, account = null }) => {
+  async gotoUrl({ page, url, account = null }) {
     await page.goto(url, {
       waitUntil: 'networkidle',
       timeout: 60000,
@@ -48,19 +50,19 @@ const tools = {
     }
   },
 
-  selectState: async ({ page, stateIndex, option }) => {
+  async selectState({ page, stateIndex, option }) {
     const stateEl = page.locator('.sc-select-filter__item-options').nth(stateIndex)
     await stateEl.locator('li', { hasText: option }).click()
   },
 
-  selectChannelName: async ({ page, channelName }) => {
+  async selectChannelName({ page, channelName }) {
     const channelRegex = new RegExp(`^${channelName}$`)
     await page.locator('.el-select').nth(0).click()
     const chooseBankEl = page.locator('.el-scrollbar__view.el-select-dropdown__list').nth(0)
     await chooseBankEl.locator('.el-select-dropdown__item', { hasText: channelRegex }).click()
   },
 
-  selectPageSize: async ({ page, pageSizeIndex }) => {
+  async selectPageSize({ page, pageSizeIndex }) {
     const wrappers = page.locator('.el-input__wrapper')
     const targetInput = wrappers.locator('input[placeholder="请选择"]').nth(2)
     await targetInput.waitFor({ state: 'visible' })
@@ -68,7 +70,7 @@ const tools = {
     await page.locator('.el-select-dropdown__item', { hasText: pageSizeIndex }).click()
   },
 
-  refreshAndWaitForBalanceTable: async ({ page }) => {
+  async refreshAndWaitForBalanceTable({ page }) {
     const rows = page.locator('tbody tr')
 
     const beforeList = await rows.evaluateAll(rows =>
@@ -93,7 +95,7 @@ const tools = {
     )
   },
 
-  getBalanceList: async ({ page }) => {
+  async getBalanceList({ page }) {
     const result = await page.$$eval(
       'tbody tr', rows => {
         return rows
@@ -119,12 +121,12 @@ const tools = {
     return result
   },
 
-  reSearch: async (page) => {
+  async reSearch(page) {
     await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click()
     await page.waitForTimeout(2000)
   },
 
-  balanceListFilter: ({ balanceList, lessAmount }) => {
+  balanceListFilter({ balanceList, lessAmount }) {
     const filtered = balanceList.filter(item => {
       return item.balance < lessAmount
     })
@@ -132,7 +134,7 @@ const tools = {
     return filtered
   },
 
-  getMaxPage: async ({ page }) => {
+  async getMaxPage({ page }) {
     const pagerItems = page.locator('.el-pager li.number')
     await page.waitForTimeout(5000)
 
@@ -145,15 +147,15 @@ const tools = {
     return max
   },
 
-  chouseAllCheckBox: async ({ page }) => {
+  async chouseAllCheckBox({ page }) {
     return await page.locator('.el-checkbox__input').nth(0).click()
   },
 
-  waitSubmitResultMessage: async ({ page, name }) => {
-    try{
+  async waitSubmitResultMessage({ page, name }) {
+    try {
       const successEl = page.locator('.el-message--success')
       await successEl.waitFor({ timeout: 180000 }).then(() => 'success'),
-  
+
       await page.waitForTimeout(3000)
 
       return {
@@ -161,7 +163,7 @@ const tools = {
         isMerchant: false,
         message: 'success',
       }
-    }catch(err){
+    } catch (err) {
       err.message = {
         name,
         isMerchant: false,
@@ -172,7 +174,7 @@ const tools = {
     }
   },
 
-  clickBatchUpdatButton: async ({ page }) => {
+  async clickBatchUpdatButton({ page }) {
     try {
       const btn = page.locator(
         'button.el-button--warning:not(.is-disabled)',
@@ -194,9 +196,11 @@ const tools = {
     }
   },
 
-  sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  },
 
-  inputMerchantName: async ({ page, merchantName }) => {
+  async inputMerchantName({ page, merchantName }) {
     const merchantInput = page.locator('input[placeholder="商户名称"]')
     await merchantInput.waitFor({ state: 'visible' })
     const currentValue = await merchantInput.inputValue()
@@ -206,7 +210,7 @@ const tools = {
     await merchantInput.type(merchantName)
   },
 
-  checkTrOnlyone: async ({ page }) => {
+  async checkTrOnlyone({ page }) {
     const trs = await page.locator('tbody tr')
     if (trs.count() === 1) {
       return true
@@ -214,8 +218,8 @@ const tools = {
 
     return false
   },
-  
-  getAttayAscendingSort: ({ array, key = null }) => {
+
+  getAttayAscendingSort({ array, key = null }) {
     let result = []
     if (key) {
       result = [...array].sort((a, b) => Number(a[key]) - Number(b[key]))
@@ -225,6 +229,82 @@ const tools = {
 
     return result
   },
+
+  getUtc8Parts(date = new Date()) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: UTC8_TIME_ZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    })
+
+    const parts = formatter.formatToParts(date)
+    const map = Object.fromEntries(parts.map(part => [part.type, part.value]))
+
+    return {
+      year: Number(map.year),
+      month: Number(map.month),
+      day: Number(map.day),
+      hour: Number(map.hour),
+      minute: Number(map.minute),
+      second: Number(map.second),
+    }
+  },
+
+  getDelayToNextReport({ reportHoursUtc8 }) {
+    const now = new Date()
+    const utc8NowParts = this.getUtc8Parts(now)
+
+    const utc8Now = Date.UTC(
+      utc8NowParts.year,
+      utc8NowParts.month - 1,
+      utc8NowParts.day,
+      utc8NowParts.hour,
+      utc8NowParts.minute,
+      utc8NowParts.second,
+      now.getMilliseconds(),
+    )
+
+    let nextReportAtUtc8Ms = null
+    for (const reportTime of reportHoursUtc8) {
+      const [hourText, minuteText] = reportTime.split(':')
+      const hour = Number(hourText)
+      const minute = Number(minuteText)
+      const candidate = Date.UTC(
+        utc8NowParts.year,
+        utc8NowParts.month - 1,
+        utc8NowParts.day,
+        hour,
+        minute,
+        0,
+        0,
+      )
+
+      if (candidate > utc8Now) {
+        nextReportAtUtc8Ms = candidate
+        break
+      }
+    }
+
+    if (!nextReportAtUtc8Ms) {
+      const [firstHourText, firstMinuteText] = reportHoursUtc8[0].split(':')
+      nextReportAtUtc8Ms = Date.UTC(
+        utc8NowParts.year,
+        utc8NowParts.month - 1,
+        utc8NowParts.day + 1,
+        Number(firstHourText),
+        Number(firstMinuteText),
+        0,
+        0,
+      )
+    }
+
+    return nextReportAtUtc8Ms - utc8Now
+  },
 }
 
-export default tools 
+export default tools

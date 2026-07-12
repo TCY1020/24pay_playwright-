@@ -1,7 +1,9 @@
 import { spawn } from 'node:child_process'
+
 import fs from 'fs'
 import path from 'path'
 import { chromium } from 'playwright'
+
 import { getConfig } from './config.js'
 import tools from './tools.js'
 
