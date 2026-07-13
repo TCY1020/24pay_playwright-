@@ -2,6 +2,14 @@ import tools from '../../../tools.js'
 
 const FORWARDED_MESSAGE_TYPE = 1
 
+function formatAmountWithCommas(amount) {
+  if (!Number.isFinite(amount)) return '0.00'
+  return amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 const messageFormatBy24pay = {
   extract24payForwardMessage(payload) {
     const cleanedPayload = payload.replace(/\u001e/g, '')
@@ -20,14 +28,14 @@ const messageFormatBy24pay = {
       todayPaymentOrderStats.find(item => item.MerchantNo === '各商户汇总') ??
       todayPaymentOrderStats[0]
     const totalPayAmount = Number(summaryRow?.OrderPayAmount ?? 0)
-    const formattedTotalPayAmount = Number.isFinite(totalPayAmount) ? totalPayAmount.toFixed(2) : '0.00'
+    const formattedTotalPayAmount = formatAmountWithCommas(totalPayAmount)
     const topMerchantList = Array.isArray(summaryRow?.merchantList)
       ? summaryRow.merchantList.slice(0, 5)
       : []
 
     const topMerchantLines = topMerchantList.map(merchant => {
       const successAmount = Number(merchant?.OrderSuccessAmount ?? 0)
-      const formattedSuccessAmount = Number.isFinite(successAmount) ? successAmount.toFixed(2) : '0.00'
+      const formattedSuccessAmount = formatAmountWithCommas(successAmount)
       const merchantNo = String(merchant?.MerchantNo ?? '').trim()
 
       return `${merchantNo}: ${formattedSuccessAmount}`
