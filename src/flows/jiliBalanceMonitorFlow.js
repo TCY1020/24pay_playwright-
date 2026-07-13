@@ -8,11 +8,13 @@ const startJiliBalanceMonitorFlow = async ({
   telegramTools,
   groupChatId,
   config,
+  shouldStop = () => false,
 }) => {
   let isFirstRun = true
-  while (true) {
+  while (!shouldStop()) {
     if (!isFirstRun) {
       await tools.sleep(config.RESEARCH_INTERVAL_MS)
+      if (shouldStop()) break
     }
     isFirstRun = false
 

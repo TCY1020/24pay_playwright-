@@ -1,31 +1,32 @@
 ---
 name: 24pay-playwright
 description: >-
-  24pay Playwright 常駐服務：24pay 網頁登入與 WebSocket 轉發至 Telegram、Jili 後台餘額監控與
-  /start 批次刷新。使用於修改此 repo、除錯 Playwright 流程、Telegram 通知、config.json 或
-  auth 狀態檔相關工作時。
+  24pay Playwright 常駐服務：24pay 網頁登入與 WebSocket 轉發至 Telegram、Jili 後台餘額監控
+  （/monitor_on|/monitor_off）與 /start 批次刷新。使用於修改此 repo、除錯 Playwright 流程、
+  Telegram 通知、config.json 或 auth 狀態檔相關工作時。
 ---
 
 # 24pay Playwright 專案
 
-Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主程式常駐執行兩條線：**24pay**（OTP 登入 + 監聽 websocket 轉發群組）與 **Jili 後台**（storageState 登入 + 餘額輪詢 + Telegram 指令刷新）。
+Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主程式常駐執行兩條線：**24pay**（OTP 登入 + 監聽 websocket 轉發群組 + 定時報表）與 **Jili 後台**（storageState 登入 + Telegram 指令驅動的批次刷新／餘額監控）。
 
 ## 目錄與責任
 
 | 路徑 | 用途 |
 |------|------|
-| `index.js` | 組裝 config、Telegram、Browser、兩個 context（24pay / jili）、註冊各 flow |
+| `index.js` | 組裝 config、Telegram、Browser、兩個 context（24pay / jili）、註冊各 flow 與 Telegram 指令 |
 | `config.js` | 自專案根目錄讀取 `config.json`（`getConfig()`） |
 | `config.json` | 機密與業務參數（勿提交版本庫；勿在對話中貼實際 token／密碼） |
 | `manual.js` | 手動登入工具：`uploadAuthJiliAuthToGce()` 產生並上傳 `jili_auth.json`，`loginAdminJili()` 驗證 admin 登入 |
 | `daily-manual.js` | 每日手動流程入口：先刷新並上傳 jili auth，再執行 admin 登入檢查 |
 | `tools.js` | 共用 `Tools`：登入導頁、`gotoUrl`、Element UI 選擇器、表格刷新、UTC+8 時間（`getUtc8Parts`／`getDelayToNextReport`）等 |
-| `telegram.js` | `TelegramTools`：polling、`onMessage`、`sendGroupMessage` |
+| `telegram/telegram.js` | `TelegramTools`：polling、`onMessage`、`sendGroupMessage` |
+| `telegram/registerJiliCommands.js` | Jili Telegram 指令註冊（`/start`、`/monitor_on`、`/monitor_off`、`/help`） |
 | `src/infra/browser.js` | `BrowserTools`：`chromium.launch` |
-| `src/pages/` | 站台頁面操作：`24payLoginPage.js`（TOTP 登入）、`24payTools.js`（`toolBy24pay`，如 `openSideMenu`） |
-| `src/flows/` | 常駐流程：`24payWsForwardFlow`、`24payScheduledReportFlow`、`jiliBalanceMonitorFlow`、`jiliRefreshCommandFlow` |
+| `src/pages/` | 站台頁面操作：`24payLoginPage.js`（TOTP 登入）、`24payTools.js`（`toolBy24pay`，如 `openSideMenu`）、`jiliLoginPage.js` |
+| `src/flows/` | 常駐／指令流程：`24payWsForwardFlow`、`24payScheduledReportFlow`、`jiliBalanceMonitorFlow`、`jiliRefreshCommandFlow` |
 | `src/usecases/24pay/` | 24pay 可重用邏輯：`paymentOrderStats`（代收統計頁操作與取表）、`messageFormatBy24pay`（WS 轉發解析與定時報表文案） |
-| `src/usecases/jili/` | Jili 可重用邏輯：餘額查詢、低餘額篩選、報表格式、auth 狀態檢查等 |
+| `src/usecases/jili/` | Jili 可重用邏輯：餘額查詢、低餘額篩選、報表格式、通道／商戶刷新、auth 狀態檢查等 |
 
 ## 指令
 
@@ -53,6 +54,39 @@ npm run dev          # 啟動 index.js（headless browser）
 - `REFRESH_CHANNEL_NAME_LIST`（`/start` 時並行刷新的通道名稱）
 - `MERCHANT_LIST`（`/start` 批次刷新時要處理的商戶集合）
 - `NOTIFY_CUSTOMER_SERVICE_LIST`（24pay websocket 轉發訊息末尾 @ 用戶名）
+
+## Telegram 指令（`telegram/registerJiliCommands.js`）
+
+啟動時**不會**自動跑餘額監控；Jili 相關能力皆由 Telegram 指令觸發：
+
+| 指令 | 行為 |
+|------|------|
+| `/start` | 批次刷新通道／商戶（`runRefresh`）；以 `isProcessing` 互斥，進行中再送會回「正在處理中」 |
+| `/monitor_on` | 背景啟動 `startJiliBalanceMonitorFlow`（**不** `await`、**不**佔用 `isProcessing`）；已在跑則提示已運行 |
+| `/monitor_off` | 設 `stopMonitor = true`；本輪查詢或 `sleep` 結束後停止 |
+| `/help` | 回傳可用指令說明（`HELP_TEXT`） |
+| 其他以 `/` 開頭的未知指令 | 回傳與 `/help` 相同內容；非 `/` 開頭的一般訊息忽略 |
+
+狀態旗標：
+
+- `isProcessing`：僅鎖住 `/start`，避免並行兩次刷新。
+- `isMonitorRunning` / `stopMonitor`：控制監控生命週期；flow 結束後在 `.finally` 把 `isMonitorRunning` 清回 `false`。
+
+分頁關係：`/start` 在 `jiliContext` 內對每個通道／商戶 `newPage()`；監控使用啟動時建立的那張 `jiliPage`。兩者不同 page，可並跑。
+
+## Jili 批次刷新（`jiliRefreshCommandFlow`）
+
+- 入口：`runRefresh({ chatId, channelNameList, jiliContext, tools, telegramTools, merchantList })`。
+- 對 `REFRESH_CHANNEL_NAME_LIST` 每個名稱各開一頁，並行 `runJiliChannelProcess`。
+- 若 `MERCHANT_LIST` 非空，另開一頁跑 `runJiliMarchantNameProcess`。
+- `Promise.all` 彙整結果後以 `buildRefreshReportText` 產出成功／失敗文案（失敗訊息會 `stripAnsi`）；無工作時回「没有需要刷新的通道或商户名稱」。
+
+## Jili 餘額監控（`jiliBalanceMonitorFlow`）
+
+- 入口：`startJiliBalanceMonitorFlow({ tools, jiliPage, telegramTools, groupChatId, config, shouldStop })`。
+- `shouldStop` 預設 `() => false`；loop 條件為 `while (!shouldStop())`，非首次執行前 `sleep(RESEARCH_INTERVAL_MS)`，sleep 後再檢查一次。
+- 每輪：低餘額清單（`GCASH_LOW_BALANCE_THRESHOLD`）+ PayMaya／`gcashwap-2` 餘額 → `formatJiliBalanceReport` → 送到 `groupChatId`。
+- 單輪錯誤只 `console.error`，不中斷 loop；停止靠 `shouldStop`（由 `/monitor_off` 驅動）。
 
 ## 24pay WebSocket 轉發（`24payWsForwardFlow`）
 
@@ -85,8 +119,9 @@ npm run dev          # 啟動 index.js（headless browser）
 1. `config.json` 是否存在且 JSON 合法。
 2. `jili_auth.json` 是否存在、是否過期（`tools.gotoUrl` 會以畫面文字判斷未登入）。
 3. Telegram：`BALANCE_NOTIFICATION_GROUP_CHAT_ID` 與 bot 是否已在群內；polling 是否與其他程序重複佔用 token。
-4. 24pay 定時報表若抓到舊資料，優先檢查「開始時間 / 結束時間」欄位是否確實被填入當日區間再送出查詢。
-5. Playwright：本機除錯可暫時將 `index.js` 的 `BrowserTools({ headless: true })` 改為 `false`（僅限本機，勿把 headed 當預設提交）。
+4. 餘額監控未通知：確認是否已送 `/monitor_on`；`/monitor_off` 後需等本輪或 sleep 結束才真正停。
+5. 24pay 定時報表若抓到舊資料，優先檢查「開始時間 / 結束時間」欄位是否確實被填入當日區間再送出查詢。
+6. Playwright：本機除錯可暫時將 `index.js` 的 `BrowserTools({ headless: true })` 改為 `false`（僅限本機，勿把 headed 當預設提交）。
 
 ## 安全
 

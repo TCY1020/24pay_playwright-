@@ -1,8 +1,8 @@
 import { getConfig } from '../../config.js'
 import tools from '../../tools.js'
-import paymentOrderStats from '../usecases/24pay/paymentOrderStats.js'
-import messageFormatBy24pay from '../usecases/24pay/messageFormatBy24pay.js'
 import toolBy24pay from '../pages/24payTools.js'
+import messageFormatBy24pay from '../usecases/24pay/messageFormatBy24pay.js'
+import paymentOrderStats from '../usecases/24pay/paymentOrderStats.js'
 
 const config = getConfig()
 const REPORT_HOURS_UTC8 = config.REPORT_HOURS_UTC8

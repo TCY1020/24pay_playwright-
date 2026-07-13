@@ -57,87 +57,48 @@ const buildRefreshReportText = ({ rows }) => {
   return `\n${messageParts.join('\n\n')}\n`
 }
 
-const registerJiliRefreshCommandFlow = async ({ 
-  telegramTools,
+const runRefresh = async ({
+  chatId,
   channelNameList,
   jiliContext,
-  merchantList,
   tools,
+  telegramTools,
+  merchantList,
 }) => {
-  let isProcessing = false
-
-  const runRefresh = async ({ chatId }) => {
-    const refreshPage = {}
-    for (const name of channelNameList) {
-      refreshPage[name] = await jiliContext.newPage()
-    }
-
-    const channelPromiseList = channelNameList.map(name =>
-      runJiliChannelProcess({
-        tools,
-        page: refreshPage[name],
-        name,
-        chatId,
-        telegramTools,
-      }),
-    )
-    const hasMerchantList = (merchantList ?? []).length > 0
-    if (hasMerchantList) {
-      channelPromiseList.push(runJiliMarchantNameProcess({
-        tools,
-        page: await jiliContext.newPage(),
-        merchantList,
-        chatId,
-        telegramTools,
-      }))
-    }
-
-    if (channelPromiseList.length === 0) {
-      return '没有需要刷新的通道或商户名稱'
-    }
-
-    const results = await Promise.all(channelPromiseList)
-    const rows = results.flatMap(result => Array.isArray(result) ? result : [result])
-
-    return buildRefreshReportText({ rows })
+  const refreshPage = {}
+  for (const name of channelNameList) {
+    refreshPage[name] = await jiliContext.newPage()
   }
 
-  telegramTools.onMessage({
-    handler: async msg => {
-      const chatId = msg.chat.id
-      if (msg.text !== '/start') return
+  const channelPromiseList = channelNameList.map(name =>
+    runJiliChannelProcess({
+      tools,
+      page: refreshPage[name],
+      name,
+      chatId,
+      telegramTools,
+    }),
+  )
 
-      if (isProcessing) {
-        await telegramTools.sendGroupMessage({
-          chatId,
-          text: '正在處理中，請稍後再試',
-        })
+  const hasMerchantList = (merchantList ?? []).length > 0
+  if (hasMerchantList) {
+    channelPromiseList.push(runJiliMarchantNameProcess({
+      tools,
+      page: await jiliContext.newPage(),
+      merchantList,
+      chatId,
+      telegramTools,
+    }))
+  }
 
-        return
-      }
+  if (channelPromiseList.length === 0) {
+    return '没有需要刷新的通道或商户名稱'
+  }
 
-      isProcessing = true
-      try{
-        const text = await runRefresh({ chatId })
-        await telegramTools.sendGroupMessage({
-          chatId,
-          text,
-        })
-      } catch (err) {
-        console.error('[流程] 刷新指令處理失敗:', err?.message ?? err)
-        await telegramTools.sendGroupMessage({
-          chatId,
-          text: `
-刷新指令处理失败，请两分钟后重试,如果连续发生超过两次,请自行手动刷新,并等Jason上班时通知他,感谢!
-錯誤碼:
-${err?.message ?? err ?? '未知錯誤'}
-`,
-        })
-      } finally {
-        isProcessing = false
-      }
-    }, 
-  })
+  const results = await Promise.all(channelPromiseList)
+  const rows = results.flatMap(result => Array.isArray(result) ? result : [result])
+
+  return buildRefreshReportText({ rows })
 }
 
-export default registerJiliRefreshCommandFlow
+export default runRefresh
