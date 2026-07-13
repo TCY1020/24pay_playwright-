@@ -49,10 +49,10 @@ registerJiliRefreshCommandFlow({
 })
 
 // 8) jili 監控流程：常駐輪詢餘額並發送通知
-await startJiliBalanceMonitorFlow({ 
-  tools,
-  jiliPage,
-  telegramTools,
-  groupChatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID,
-  config, 
-})
+// await startJiliBalanceMonitorFlow({ 
+//   tools,
+//   jiliPage,
+//   telegramTools,
+//   groupChatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID,
+//   config, 
+// })
