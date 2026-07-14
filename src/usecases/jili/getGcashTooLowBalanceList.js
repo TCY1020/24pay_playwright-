@@ -24,7 +24,18 @@ const getGcashTooLowBalanceList = async ({ tools, page, lessAmount }) => {
     key: 'balance',
   })
 
-  const result = [...sortedLowBalanceList, totalSummaryRow]
+  const formattedLowBalanceList = sortedLowBalanceList.map(item => {
+    return {
+      ...item,
+      balance: tools.formatAmountWithCommas(item.balance),
+    }
+  })
+  const formattedTotalSummaryRow = {
+    ...totalSummaryRow,
+    balance: tools.formatAmountWithCommas(totalSummaryRow.balance),
+  }
+
+  const result = [...formattedLowBalanceList, formattedTotalSummaryRow]
 
   return result
 }

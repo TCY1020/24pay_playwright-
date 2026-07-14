@@ -1,7 +1,7 @@
-const formatJiliBalanceReport = ({ lowList, threshold, payMayaBalance, MayaBusinessBalance }) => {
+const formatJiliBalanceReport = ({ lowList, threshold, payMayaBalance, mayaBusinessBalance, gotymeBalance }) => {
   const count = lowList.length
   const header = `Gcash低於 ${threshold} 的帳戶：(${count - 1} 筆)`
-  const footer = `\nPayMaya總餘: ${payMayaBalance}\nMayaB總餘: ${MayaBusinessBalance}`
+  const footer = `\nPayMaya總餘: ${payMayaBalance}\nMayaB總餘: ${mayaBusinessBalance}\nGotyme總餘: ${gotymeBalance}`
 
   let body = ''
   if (count > 0) {

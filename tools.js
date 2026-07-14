@@ -305,6 +305,19 @@ const tools = {
 
     return nextReportAtUtc8Ms - utc8Now
   },
+
+  formatAmountWithCommas(amount) {
+    const numericAmount = typeof amount === 'number'
+      ? amount
+      : Number(String(amount ?? '').replace(/,/g, ''))
+
+    if (!Number.isFinite(numericAmount)) return '0.00'
+
+    return numericAmount.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  },
 }
 
 export default tools

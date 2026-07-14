@@ -26,12 +26,14 @@ const startJiliBalanceMonitorFlow = async ({
         lessAmount: gcashLowBalanceThreshold,
       })
       const payMayaBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'PayMaya' })
-      const MayaBusinessBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'gcashwap-2' })
+      const mayaBusinessBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'gcashwap-2' })
+      const gotymeBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'Gotyme' })
       const message = formatJiliBalanceReport({
         threshold: gcashLowBalanceThreshold,
         lowList: gcashLowAccountList,
         payMayaBalance: payMayaBalanceData?.balance ?? 'N/A',
-        MayaBusinessBalance: MayaBusinessBalanceData?.balance ?? 'N/A',
+        mayaBusinessBalance: mayaBusinessBalanceData?.balance ?? 'N/A',
+        gotymeBalance: gotymeBalanceData?.balance ?? 'N/A',
       })
       await telegramTools.sendGroupMessage({ chatId: groupChatId, text: message })
     } catch (err) {

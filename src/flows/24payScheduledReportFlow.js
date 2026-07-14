@@ -34,7 +34,6 @@ const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId 
         const sortedTodayPaymentOrderStats = paymentOrderStats.sortMerchantBySuccessAmount({ todayPaymentOrderStats })
         const text = messageFormatBy24pay.format24payScheduledReport({
           todayPaymentOrderStats: sortedTodayPaymentOrderStats,
-          // notifyUserText: NOTIFY_USER_TEXT,
           notifyUserText: `@${NOTIFY_USER_ID.join(' @')}`,
         })
         await telegramTools.sendGroupMessage({ chatId: groupChatId, text })
