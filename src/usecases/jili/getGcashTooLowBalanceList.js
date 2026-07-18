@@ -1,17 +1,19 @@
 import map from '../../../map.js'
+import jiliTools from '../../pages/jiliTools.js'
+import tools from '../../../tools.js'
 
-const getGcashTooLowBalanceList = async ({ tools, page, lessAmount }) => {
+const getGcashTooLowBalanceList = async ({ page, lessAmount }) => {
   const selectMap = map.selectMap
-  await tools.selectState({
+  await jiliTools.selectState({
     page,
     stateIndex: selectMap.state.COLLECTION_STATUS,
     option: selectMap.stateText.OPEN,
   })
-  await tools.selectChannelName({ page, channelName: 'GcashWap' })
-  await tools.selectPageSize({ page, pageSizeIndex: selectMap.pageSize[200] })
+  await jiliTools.selectChannelName({ page, channelName: 'GcashWap' })
+  await jiliTools.selectPageSize({ page, pageSizeIndex: selectMap.pageSize[200] })
 
-  await tools.refreshAndWaitForBalanceTable({ page })
-  const rows = await tools.getBalanceList({ page })
+  await jiliTools.refreshAndWaitForBalanceTable({ page })
+  const rows = await jiliTools.getBalanceList({ page })
   const totalSummaryRow = rows.pop()
 
   const lowBalanceList = tools.balanceListFilter({

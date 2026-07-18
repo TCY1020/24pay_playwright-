@@ -1,16 +1,18 @@
 import map from '../../../map.js'
+import jiliTools from '../../pages/jiliTools.js'
+import tools from '../../../tools.js'
 
-const getChannelAllAccountBalance = async ({ tools, page, channelName }) => {
+const getChannelAllAccountBalance = async ({ page, channelName }) => {
   const selectMap = map.selectMap
-  await tools.selectState({
+  await jiliTools.selectState({
     page,
     stateIndex: selectMap.state.COLLECTION_STATUS,
     option: selectMap.stateText.OPEN,
   })
-  await tools.selectChannelName({ page, channelName })
-  await tools.selectPageSize({ page, pageSizeIndex: selectMap.pageSize[200] })
-  await tools.refreshAndWaitForBalanceTable({ page })
-  const balanceList = await tools.getBalanceList({ page })
+  await jiliTools.selectChannelName({ page, channelName })
+  await jiliTools.selectPageSize({ page, pageSizeIndex: selectMap.pageSize[200] })
+  await jiliTools.refreshAndWaitForBalanceTable({ page })
+  const balanceList = await jiliTools.getBalanceList({ page })
   const totalSummaryRow = balanceList.find(item => item.name === '總共')
 
   let result = null

@@ -21,13 +21,12 @@ const startJiliBalanceMonitorFlow = async ({
     try {
       const gcashLowBalanceThreshold = config.GCASH_LOW_BALANCE_THRESHOLD
       const gcashLowAccountList = await getGcashTooLowBalanceList({
-        tools,
         page: jiliPage,
         lessAmount: gcashLowBalanceThreshold,
       })
-      const payMayaBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'PayMaya' })
-      const mayaBusinessBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'gcashwap-2' })
-      const gotymeBalanceData = await getChannelAllAccountBalance({ tools, page: jiliPage, channelName: 'Gotyme' })
+      const payMayaBalanceData = await getChannelAllAccountBalance({ page: jiliPage, channelName: 'PayMaya' })
+      const mayaBusinessBalanceData = await getChannelAllAccountBalance({ page: jiliPage, channelName: 'gcashwap-2' })
+      const gotymeBalanceData = await getChannelAllAccountBalance({ page: jiliPage, channelName: 'Gotyme' })
       const message = formatJiliBalanceReport({
         threshold: gcashLowBalanceThreshold,
         lowList: gcashLowAccountList,

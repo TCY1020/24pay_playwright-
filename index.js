@@ -34,7 +34,9 @@ start24payWsForwardFlow({
   browserTools,
 })
 await start24payScheduledReportFlow({ 
-  page: _24payPage, telegramTools, groupChatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID,
+  page: _24payPage, 
+  telegramTools,
+  groupChatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID,
   browserTools,
 })
 

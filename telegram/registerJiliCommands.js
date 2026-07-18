@@ -100,7 +100,6 @@ const registerJiliCommands = ({
           chatId,
           channelNameList: config.REFRESH_CHANNEL_NAME_LIST,
           jiliContext,
-          tools,
           telegramTools,
           merchantList: config.MERCHANT_LIST,
         })

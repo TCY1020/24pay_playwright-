@@ -5,7 +5,7 @@ import path from 'path'
 import { chromium } from 'playwright'
 
 import { getConfig } from './config.js'
-import tools from './tools.js'
+import jiliTools from './src/pages/jiliTools.js'
 
 const config = getConfig()
 
@@ -40,7 +40,7 @@ const manual = {
     const context = await browser.newContext()
     const page = await context.newPage()
     try {
-      await tools.login({ page, backstage: 'jili', config })
+      await jiliTools.login({ page, backstage: 'jili', config })
       await fs.promises.mkdir(path.dirname(storageStatePath), { recursive: true })
       await context.storageState({ path: storageStatePath })
       console.log('已寫入 storageState，可把此檔放到伺服器並以 HEADLESS=1 執行主程式。')
@@ -57,7 +57,7 @@ const manual = {
     const context = await browser.newContext()
     const page = await context.newPage()
     try {
-      await tools.login({ page, backstage: 'admin', config })
+      await jiliTools.login({ page, backstage: 'admin', config })
     } finally {
       await browser.close()
     }

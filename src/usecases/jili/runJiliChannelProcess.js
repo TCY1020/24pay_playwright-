@@ -1,32 +1,33 @@
 import map from '../../../map.js'
+import jiliTools from '../../pages/jiliTools.js'
 
-const runJiliChannelProcess = async ({ tools, page, name, chatId, telegramTools, account }) => {
+const runJiliChannelProcess = async ({ page, name, chatId, telegramTools, account }) => {
   try {
     const selectMap = map.selectMap
-    await tools.gotoUrl({
+    await jiliTools.goToUrl({
       page,
       url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account',
       account,
     })
 
-    await tools.selectChannelName({
+    await jiliTools.selectChannelName({
       page,
       channelName: name,
     })
 
-    await tools.selectState({
+    await jiliTools.selectState({
       page,
       stateIndex: selectMap.state.COLLECTION_STATUS,
       option: selectMap.stateText.OPEN,
     })
 
-    await tools.reSearch(page)
+    await jiliTools.reSearch(page)
     let status
-    const cardCount = await tools.getChannelCardCount({ page })
+    const cardCount = await jiliTools.getChannelCardCount({ page })
     while (true) {
-      await tools.chouseAllCheckBox({ page })
-      await tools.clickBatchUpdatButton({ page })
-      status = await tools.waitSubmitResultMessage({ page, name })
+      await jiliTools.chouseAllCheckBox({ page })
+      await jiliTools.clickBatchUpdatButton({ page })
+      status = await jiliTools.waitSubmitResultMessage({ page, name })
       if (status.message !== 'success') {
         break
       }
@@ -53,9 +54,9 @@ const runJiliChannelProcess = async ({ tools, page, name, chatId, telegramTools,
   }
 }
 
-const runJiliMarchantNameProcess = async ({ tools, page, merchantList, chatId, telegramTools, account }) => {
+const runJiliMarchantNameProcess = async ({ page, merchantList, chatId, telegramTools, account }) => {
   try {
-    await tools.gotoUrl({
+    await jiliTools.goToUrl({
       page,
       url: 'https://ptrcqps9.2424ph.com/#/user_system/user_account',
       account,
@@ -63,16 +64,16 @@ const runJiliMarchantNameProcess = async ({ tools, page, merchantList, chatId, t
 
     let rows = []
     for (const merchant of merchantList) {
-      await tools.inputMerchantName({ page, merchantName: merchant })
+      await jiliTools.inputMerchantName({ page, merchantName: merchant })
       await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click()
-      await tools.chouseAllCheckBox({ page })
-      await tools.clickBatchUpdatButton({ page })
-      const isOnlyone = await tools.checkTrOnlyone({ page })
+      await jiliTools.chouseAllCheckBox({ page })
+      await jiliTools.clickBatchUpdatButton({ page })
+      const isOnlyone = await jiliTools.checkTrOnlyone({ page })
       if (isOnlyone) {
         break
       }
 
-      const result = await tools.waitSubmitResultMessage({ page, name: merchant })
+      const result = await jiliTools.waitSubmitResultMessage({ page, name: merchant })
       result.isMerchant = true
       rows.push(result)
     }

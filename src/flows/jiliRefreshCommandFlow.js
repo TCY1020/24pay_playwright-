@@ -5,7 +5,6 @@ const runRefresh = async ({
   chatId,
   channelNameList,
   jiliContext,
-  tools,
   telegramTools,
   merchantList,
 }) => {
@@ -16,7 +15,6 @@ const runRefresh = async ({
 
   const channelPromiseList = channelNameList.map(name =>
     runJiliChannelProcess({
-      tools,
       page: refreshPage[name],
       name,
       chatId,
@@ -27,7 +25,6 @@ const runRefresh = async ({
   const hasMerchantList = (merchantList ?? []).length > 0
   if (hasMerchantList) {
     channelPromiseList.push(runJiliMarchantNameProcess({
-      tools,
       page: await jiliContext.newPage(),
       merchantList,
       chatId,
