@@ -21,12 +21,13 @@ const runJiliChannelProcess = async ({ tools, page, name, chatId, telegramTools,
     })
 
     await tools.reSearch(page)
-    let result
+    let status
+    const cardCount = await tools.getChannelCardCount({ page })
     while (true) {
       await tools.chouseAllCheckBox({ page })
       await tools.clickBatchUpdatButton({ page })
-      result = await tools.waitSubmitResultMessage({ page, name })
-      if (result.message !== 'success') {
+      status = await tools.waitSubmitResultMessage({ page, name })
+      if (status.message !== 'success') {
         break
       }
 
@@ -43,7 +44,10 @@ const runJiliChannelProcess = async ({ tools, page, name, chatId, telegramTools,
       ])
     }
 
-    return result
+    return {
+      ...status,
+      cardCount,
+    }
   } finally {
     await page.close().catch(() => {})
   }
