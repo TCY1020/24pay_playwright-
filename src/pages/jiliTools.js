@@ -167,6 +167,7 @@ const jiliTools = {
   async getChannelCardCount({ page }) {
     const text = await page.locator('span.el-pagination__total.is-first').innerText()
     const match = text.match(/(\d+)/)
+
     return match ? Number(match[1]) : 0
   },
 

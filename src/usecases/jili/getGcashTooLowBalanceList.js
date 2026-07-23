@@ -1,6 +1,6 @@
 import map from '../../../map.js'
-import jiliTools from '../../pages/jiliTools.js'
 import tools from '../../../tools.js'
+import jiliTools from '../../pages/jiliTools.js'
 
 const getGcashTooLowBalanceList = async ({ page, lessAmount }) => {
   const selectMap = map.selectMap

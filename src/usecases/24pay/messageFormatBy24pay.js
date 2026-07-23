@@ -12,7 +12,18 @@ const messageFormatBy24pay = {
     return messageObject.arguments?.[0] ?? null
   },
 
-  format24payScheduledReport({ todayPaymentOrderStats, notifyUserText = '' }) {
+  format24payScheduledReport({
+    todayPaymentOrderStats,
+    merchantPayTypePaymentList = [],
+    notifyUserText = '',
+  }) {
+    const PAY_TYPE_LABELS = [
+      { key: 'GoTyme', label: 'GoTyme扫码' },
+      { key: 'MAYA_DIRECT', label: 'Maya直连' },
+      { key: 'GCASH_QR', label: 'GCash扫码' },
+    ]
+    const DIVIDER = '——————————'
+
     const nowParts = tools.getUtc8Parts()
     const dateText = `${nowParts.month}/${nowParts.day} ${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`
 
@@ -28,9 +39,21 @@ const messageFormatBy24pay = {
     const topMerchantLines = topMerchantList.map(merchant => {
       const successAmount = Number(merchant?.OrderSuccessAmount ?? 0)
       const formattedSuccessAmount = tools.formatAmountWithCommas(successAmount)
-      const merchantNo = String(merchant?.MerchantNo ?? '').trim()
+      const merchantName = String(merchant?.CompanyName ?? merchant?.MerchantNo ?? '').trim()
 
-      return `${merchantNo}: ${formattedSuccessAmount}`
+      return `${merchantName}: ${formattedSuccessAmount}`
+    })
+
+    const merchantDetailBlocks = merchantPayTypePaymentList.map(merchant => {
+      const merchantName = String(merchant?.merchantName ?? merchant?.merchantNo ?? '').trim()
+      const payTypeLines = PAY_TYPE_LABELS.flatMap(({ key, label }) => {
+        const amount = merchant?.[key] ?? '0.00'
+        if (Number(amount) === 0) return []
+
+        return [`${label} ${amount}`]
+      })
+
+      return [DIVIDER, merchantName, ...payTypeLines].join('\n')
     })
 
     const titleLine = `${dateText}總跑量 ${formattedTotalPayAmount}`
@@ -40,6 +63,8 @@ const messageFormatBy24pay = {
       notifyHeader,
       '前五家：',
       ...topMerchantLines,
+      '',
+      ...merchantDetailBlocks,
     ].join('\n')
   },
 }

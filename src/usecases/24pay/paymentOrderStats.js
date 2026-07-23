@@ -1,10 +1,12 @@
 import { getConfig } from '../../../config.js'
+import toolBy24pay from '../../pages/24payTools.js'
 
 const config = getConfig()
 const PAYMENT_STATS_PAGE = config.PAYMENT_STATS_PAGE
 
 const paymentOrderStats = {
   async getTodayPaymentOrderStats({ page }) {
+    await toolBy24pay.openTab({ page, targetId: PAYMENT_STATS_PAGE.subMenuId })
     await page.waitForLoadState('domcontentloaded')
 
     const merchantIframe = page.locator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`).first()
@@ -91,24 +93,15 @@ const paymentOrderStats = {
       
     return todayPaymentOrderStats
   },
-  async openPaymentOrderStatsMenu({ page }) {
-    const paymentStatsTab = page.locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"]`).first()
-    await paymentStatsTab.waitFor({ state: 'visible', timeout: 12000 })
-    await paymentStatsTab.click()
-    await page
-      .locator(`ul#tabName > li[lay-id="${PAYMENT_STATS_PAGE.subMenuId}"].layui-this`)
-      .first()
-      .waitFor({ state: 'visible', timeout: 10000 })
-  },
   async setPaymentOrderStatsMenuFilter({ page, startDate, endDate }) {
-    await this.openPaymentOrderStatsMenu({ page })
+    await toolBy24pay.openTab({ page, targetId: PAYMENT_STATS_PAGE.subMenuId })
 
     const startDateInput = page
       .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
       .locator('input[placeholder="开始时间"]')
     await startDateInput.waitFor({ state: 'visible', timeout: 10000 })
     await startDateInput.fill(startDate)
-      
+
     const endDateInput = page
       .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
       .locator('input[placeholder="结束时间"]')
@@ -116,7 +109,7 @@ const paymentOrderStats = {
     await endDateInput.fill(endDate)
   },
   async submitPaymentOrderStats({ page }) {
-    await this.openPaymentOrderStatsMenu({ page })
+    await toolBy24pay.openTab({ page, targetId: PAYMENT_STATS_PAGE.subMenuId })
 
     const submitButton = page
       .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
@@ -125,6 +118,7 @@ const paymentOrderStats = {
     await submitButton.click()
   },
   async clickPaymentDownArrowKey({ page }) {
+    await toolBy24pay.openTab({ page, targetId: PAYMENT_STATS_PAGE.subMenuId })
     const downArrowKey = page
       .frameLocator(`iframe[tab-id="${PAYMENT_STATS_PAGE.subMenuId}"]`)
       .locator('tbody i.layui-icon.layui-icon-right')

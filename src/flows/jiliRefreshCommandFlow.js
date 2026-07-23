@@ -1,5 +1,5 @@
-import { runJiliChannelProcess, runJiliMarchantNameProcess } from '../usecases/jili/runJiliChannelProcess.js'
 import messageFormatByjili from '../usecases/jili/messageFormatByjili.js'
+import { runJiliChannelProcess, runJiliMarchantNameProcess } from '../usecases/jili/runJiliChannelProcess.js'
 
 const runRefresh = async ({
   chatId,
