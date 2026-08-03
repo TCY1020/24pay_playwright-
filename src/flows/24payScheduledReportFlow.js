@@ -1,7 +1,7 @@
 import { getConfig } from '../../config.js'
 import tools from '../../tools.js'
 import toolBy24pay from '../pages/24payTools.js'
-import messageFormatBy24pay from '../usecases/24pay/messageFormatBy24pay.js'
+import messageFormat from '../../telegram/messageFormat.js'
 import paymentOrderStats from '../usecases/24pay/paymentOrderStats.js'
 import philippinePayment from '../usecases/24pay/philippinePayment.js'
 
@@ -57,7 +57,7 @@ const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId 
           merchantPayTypePaymentList.push(merchantPayTypePayment)
         }
       
-        const text = messageFormatBy24pay.format24payScheduledReport({
+        const text = messageFormat.format24payScheduledReport({
           todayPaymentOrderStats: sortedTodayPaymentOrderStats,
           merchantPayTypePaymentList,
           notifyUserText: `@${NOTIFY_USER_ID.join(' @')}`,

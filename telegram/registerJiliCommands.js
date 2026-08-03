@@ -1,4 +1,4 @@
-import startJiliBalanceMonitorFlow from '../src/flows/jiliBalanceMonitorFlow.js'
+import startBalanceMonitorFlow from '../src/flows/balanceMonitorFlow.js'
 import runRefresh from '../src/flows/jiliRefreshCommandFlow.js'
 import tools from '../tools.js'
 
@@ -46,7 +46,7 @@ const registerJiliCommands = ({
         stopMonitor = false
         await telegramTools.sendGroupMessage({ chatId, text: '已啟動餘額監控' })
 
-        startJiliBalanceMonitorFlow({
+        startBalanceMonitorFlow({
           tools,
           jiliPage,
           telegramTools,
@@ -102,6 +102,7 @@ const registerJiliCommands = ({
           jiliContext,
           telegramTools,
           merchantList: config.MERCHANT_LIST,
+          config,
         })
         await telegramTools.sendGroupMessage({
           chatId,

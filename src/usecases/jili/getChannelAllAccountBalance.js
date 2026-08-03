@@ -22,7 +22,7 @@ const getChannelAllAccountBalance = async ({ page, channelName }) => {
   } else {
     result = {
       ...totalSummaryRow,
-      balance: tools.formatAmountWithCommas(totalSummaryRow.balance),
+      balance: totalSummaryRow.balance,
     }
   }
 

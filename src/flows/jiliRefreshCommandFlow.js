@@ -1,5 +1,7 @@
-import messageFormatByjili from '../usecases/jili/messageFormatByjili.js'
 import { runJiliChannelProcess, runJiliMarchantNameProcess } from '../usecases/jili/runJiliChannelProcess.js'
+import getUpstreamBalances from '../usecases/upstream/getUpstreamBalances.js'
+import messageFormat from '../../telegram/messageFormat.js'
+import tools from '../../tools.js'
 
 const runRefresh = async ({
   chatId,
@@ -7,6 +9,7 @@ const runRefresh = async ({
   jiliContext,
   telegramTools,
   merchantList,
+  config,
 }) => {
   const refreshPage = {}
   for (const name of channelNameList) {
@@ -39,7 +42,23 @@ const runRefresh = async ({
   const results = await Promise.all(channelPromiseList)
   const rows = results.flatMap(result => Array.isArray(result) ? result : [result])
 
-  return messageFormatByjili.buildRefreshReportText({ rows })
+  const {
+    fastPayBalanceData,
+    fastPayBlackBalanceData,
+    tgPayBalanceData,
+    leePayBalanceData,
+  } = await getUpstreamBalances({ config })
+  const jiliReportText = messageFormat.buildRefreshReportText({ rows })
+
+  const upstreamReportText = messageFormat.formatUpstreamBalanceReport({
+    fastPayBalance: tools.formatAmountWithCommas(fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A'),
+    fastPayBlackBalance: tools.formatAmountWithCommas(fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A'),
+    tgPayBalance: tools.formatAmountWithCommas(tgPayBalanceData?.param?.balance ?? 'N/A'),
+    leePayBalance: tools.formatAmountWithCommas(leePayBalanceData?.data?.balance ?? 'N/A'),
+  })
+
+
+  return `${jiliReportText}\n${upstreamReportText}`
 }
 
 export default runRefresh

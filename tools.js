@@ -105,7 +105,7 @@ const tools = {
       ? amount
       : Number(String(amount ?? '').replace(/,/g, ''))
 
-    if (!Number.isFinite(numericAmount)) return '0.00'
+    if (!Number.isFinite(numericAmount)) return 'N/A'
 
     return numericAmount.toLocaleString('en-US', {
       minimumFractionDigits: 2,
