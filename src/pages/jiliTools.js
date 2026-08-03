@@ -69,28 +69,10 @@ const jiliTools = {
   },
 
   async refreshAndWaitForBalanceTable({ page }) {
-    const rows = page.locator('tbody tr')
-
-    const beforeList = await rows.evaluateAll(rows =>
-      rows.map(row => row.innerText),
-    )
-
     await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click()
 
     await page.locator('.el-loading-mask').waitFor({ state: 'hidden' }).catch(() => {})
-
-    await page.waitForFunction(
-      (oldList) => {
-        const newList = Array.from(document.querySelectorAll('tbody tr'))
-          .map(row => row.innerText)
-
-        if (!newList.length) return false
-
-        return JSON.stringify(newList) !== JSON.stringify(oldList)
-      },
-      beforeList,
-      { timeout: 10000 },
-    )
+    await page.waitForTimeout(1000)
   },
 
   async getBalanceList({ page }) {

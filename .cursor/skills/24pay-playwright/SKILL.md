@@ -26,7 +26,7 @@ Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主�
 | `src/pages/` | 站台頁面操作：`24payLoginPage.js`（TOTP 登入）、`24payTools.js`（`toolBy24pay`：`openSideMenu`／`openThreeLevelSideMenu`／`openTab`）、`jiliLoginPage.js`、`jiliTools.js`（`jiliTools`：登入／導頁／通道選擇／餘額表／批次更新／`getChannelCardCount` 等） |
 | `src/flows/` | 常駐／指令流程：`24payWsForwardFlow`、`24payScheduledReportFlow`、`jiliBalanceMonitorFlow`、`jiliRefreshCommandFlow` |
 | `src/usecases/24pay/` | 24pay 可重用邏輯：`paymentOrderStats`（代收統計頁操作與取表）、`philippinePayment`（菲律賓支付頁篩選與支付方式金額）、`messageFormatBy24pay`（WS 轉發解析與定時報表文案） |
-| `src/usecases/jili/` | Jili 可重用邏輯：餘額查詢、低餘額篩選、`formatJiliBalanceReport`、`messageFormatByjili`（刷新報表文案）、`runJiliChannelProcess`／`runJiliMarchantNameProcess`、auth 狀態檢查等 |
+| `src/usecases/jili/` | Jili 可重用邏輯：餘額查詢（含可選的低餘額篩選 usecase）、`formatJiliBalanceReport`、`messageFormatByjili`（刷新報表文案）、`runJiliChannelProcess`／`runJiliMarchantNameProcess`、auth 狀態檢查等 |
 
 ## 指令
 
@@ -71,7 +71,7 @@ npm run dev          # 啟動 index.js（headless browser）
 狀態旗標：
 
 - `isProcessing`：僅鎖住 `/start`，避免並行兩次刷新。
-- `isMonitorRunning` / `stopMonitor`：控制監控生命週期；flow 結束後在 `.finally` 把 `isMonitorRunning` 清回 `false`。
+- `isMonitorRunning` / `stopMonitor`：控制監控生命週期；`/monitor_on` **不** `await` flow，必須把 `isMonitorRunning = false` 掛在 promise 的 `.finally`（不可用同步 `try/finally`，否則會立刻清旗標，導致 `/monitor_off` 誤判未運行）。
 
 分頁關係：`/start` 在 `jiliContext` 內對每個通道／商戶 `newPage()`；監控使用啟動時建立的那張 `jiliPage`。兩者不同 page，可並跑。
 
@@ -98,7 +98,8 @@ npm run dev          # 啟動 index.js（headless browser）
 
 - 入口：`startJiliBalanceMonitorFlow({ tools, jiliPage, telegramTools, groupChatId, config, shouldStop })`。
 - `shouldStop` 預設 `() => false`；loop 條件為 `while (!shouldStop())`，非首次執行前 `sleep(RESEARCH_INTERVAL_MS)`，sleep 後再檢查一次。
-- 每輪：低餘額清單（`GCASH_LOW_BALANCE_THRESHOLD`）+ PayMaya／`gcashwap-2` 餘額 → `formatJiliBalanceReport` → 送到 `groupChatId`。
+- 每輪：查 Gotyme 通道總餘額（`getChannelAllAccountBalance`）→ `formatJiliBalanceReport`（文案：`Gotyme總餘: …`）→ 送到 `groupChatId`。
+- （歷史／可選）`getGcashTooLowBalanceList`、PayMaya／`gcashwap-2` 查詢仍留在 usecase，目前監控 flow 未使用。
 - 單輪錯誤只 `console.error`，不中斷 loop；停止靠 `shouldStop`（由 `/monitor_off` 驅動）。
 
 ## 24pay WebSocket 轉發（`24payWsForwardFlow`）
@@ -142,7 +143,7 @@ npm run dev          # 啟動 index.js（headless browser）
 - **Jili 分層**：
   - 流程編排 → `src/flows/jiliRefreshCommandFlow.js`、`jiliBalanceMonitorFlow.js`
   - 業務步驟／文案 → `src/usecases/jili/`（如 `runJiliChannelProcess`、`messageFormatByjili`、`formatJiliBalanceReport`）
-  - 頁面級共用操作 → `src/pages/jiliTools.js`（`jiliTools`：如 `getChannelCardCount`、`selectChannelName`、`clickBatchUpdatButton`）
+  - 頁面級共用操作 → `src/pages/jiliTools.js`（`jiliTools`：如 `getChannelCardCount`、`selectChannelName`、`clickBatchUpdatButton`、`refreshAndWaitForBalanceTable`：點查詢後等 loading 消失 + 短等待）
   - 共用非 page 工具 → 根目錄 `tools.js`（如 `sleep`、`formatAmountWithCommas`、`balanceListFilter`）
 - **選擇器**：Jili 端大量依賴 Element UI class（`.el-select`、`tbody tr` 等）；24pay 側邊選單展開用 `:scope > ul.sub-menu` 避免抓到巢狀子選單。改版前端時易碎，改動需實際跑頁驗證。
 - **24pay 登入**：`otplib` 產生一次性碼；失敗時檢查 `SECRET_24PAY` 與網路／頁面載入。
