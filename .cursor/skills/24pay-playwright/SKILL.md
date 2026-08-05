@@ -27,7 +27,7 @@ Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主�
 | `telegram/registerJiliCommands.js` | Jili Telegram 指令註冊（`/start`、`/monitor_on`、`/monitor_off`、`/help`）；指令狀態回覆字串寫在此檔 |
 | `src/infra/browser.js` | `BrowserTools`：`chromium.launch` |
 | `src/pages/` | 站台頁面操作：`24payLoginPage.js`（TOTP 登入）、`24payTools.js`（`toolBy24pay`：`openSideMenu`／`openThreeLevelSideMenu`／`openTab`）、`jiliLoginPage.js`、`jiliTools.js`（`jiliTools`：登入／導頁／通道選擇／餘額表／批次更新／`getChannelCardCount` 等） |
-| `src/flows/` | 常駐／指令流程：`24payWsForwardFlow`、`24payScheduledReportFlow`、`balanceMonitorFlow`、`jiliRefreshCommandFlow` |
+| `src/flows/` | 常駐／指令流程：`24payWsForwardFlow`、`24payScheduledReportFlow`、`balanceMonitorFlow`、`refreshCommandFlow` |
 | `src/usecases/24pay/` | 24pay 可重用邏輯：`paymentOrderStats`（代收統計頁操作與取表）、`philippinePayment`（菲律賓支付頁篩選與支付方式金額） |
 | `src/usecases/jili/` | Jili 可重用邏輯：餘額查詢（含可選的低餘額篩選 usecase）、`runJiliChannelProcess`／`runJiliMarchantNameProcess`、auth 狀態檢查等 |
 | `src/usecases/upstream/` | Upstream 組裝：`getUpstreamBalances`（簽章 + 並行打四家 API，回傳原始 JSON） |
@@ -72,8 +72,8 @@ npm run dev          # 啟動 index.js（headless browser）
 | 方法 | 用途 | 呼叫端 |
 |------|------|--------|
 | `formatJiliBalanceReport` | `Gotyme總餘: …` | `balanceMonitorFlow` |
-| `formatUpstreamBalanceReport` | FastPay／黑名單／TGPay／LeePay 總餘 | `balanceMonitorFlow`、`jiliRefreshCommandFlow` |
-| `buildRefreshReportText` | `/start` 通道／商戶刷新結果 | `jiliRefreshCommandFlow` |
+| `formatUpstreamBalanceReport` | FastPay／黑名單／TGPay／LeePay 總餘 | `balanceMonitorFlow`、`refreshCommandFlow` |
+| `buildRefreshReportText` | `/start` 通道／商戶刷新結果 | `refreshCommandFlow` |
 | `extract24payForwardMessage` | 解析 24pay WS payload | `24payWsForwardFlow` |
 | `format24payScheduledReport` | 定時報表全文 | `24payScheduledReportFlow` |
 
@@ -85,7 +85,7 @@ npm run dev          # 啟動 index.js（headless browser）
 
 | 指令 | 行為 |
 |------|------|
-| `/start` | 批次刷新通道／商戶（`runRefresh`）；以 `isProcessing` 互斥，進行中再送會回「正在處理中」 |
+| `/start` | 批次刷新通道／商戶（`runRefreshCommandFlow`）；以 `isProcessing` 互斥，進行中再送會回「正在處理中」 |
 | `/monitor_on` | 背景啟動 `startBalanceMonitorFlow`（**不** `await`、**不**佔用 `isProcessing`）；已在跑則提示已運行 |
 | `/monitor_off` | 設 `stopMonitor = true`；本輪查詢或 `sleep` 結束後停止 |
 | `/help` | 回傳可用指令說明（`HELP_TEXT`） |
@@ -112,9 +112,9 @@ npm run dev          # 啟動 index.js（headless browser）
   - LeePay：`data?.balance`
 - 分層：簽章 → `sing.js`；HTTP → `upstreamApi.js`；組裝 → usecase；文案 → `telegram/messageFormat.js`。
 
-## Jili 批次刷新（`jiliRefreshCommandFlow`）
+## 批次刷新（`refreshCommandFlow`）
 
-- 入口：`runRefresh({ chatId, channelNameList, jiliContext, telegramTools, merchantList, config })`（需 `config` 以查 Upstream）。
+- 入口：`runRefreshCommandFlow({ chatId, channelNameList, jiliContext, telegramTools, merchantList, config })`（需 `config` 以查 Upstream）。
 - 對 `REFRESH_CHANNEL_NAME_LIST` 每個名稱各開一頁，並行 `runJiliChannelProcess`。
 - 若 `MERCHANT_LIST` 非空，另開一頁跑 `runJiliMarchantNameProcess`。
 - `Promise.all` 彙整結果後：
@@ -187,7 +187,7 @@ npm run dev          # 啟動 index.js（headless browser）
   - Telegram 文案 → `telegram/messageFormat.js`
   - 跨站台時間與金額格式 → 根目錄 `tools.js`
 - **Jili 分層**：
-  - 流程編排 → `src/flows/jiliRefreshCommandFlow.js`、`balanceMonitorFlow.js`
+  - 流程編排 → `src/flows/refreshCommandFlow.js`、`balanceMonitorFlow.js`
   - 業務步驟 → `src/usecases/jili/`（如 `runJiliChannelProcess`）
   - Telegram 文案 → `telegram/messageFormat.js`
   - 頁面級共用操作 → `src/pages/jiliTools.js`（`jiliTools`：如 `getChannelCardCount`、`selectChannelName`、`clickBatchUpdatButton`、`refreshAndWaitForBalanceTable`）

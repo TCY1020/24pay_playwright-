@@ -3,7 +3,7 @@ import getUpstreamBalances from '../usecases/upstream/getUpstreamBalances.js'
 import messageFormat from '../../telegram/messageFormat.js'
 import tools from '../../tools.js'
 
-const runRefresh = async ({
+const runRefreshCommandFlow = async ({
   chatId,
   channelNameList,
   jiliContext,
@@ -61,4 +61,4 @@ const runRefresh = async ({
   return `${jiliReportText}\n${upstreamReportText}`
 }
 
-export default runRefresh
+export default runRefreshCommandFlow

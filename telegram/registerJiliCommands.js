@@ -1,5 +1,5 @@
 import startBalanceMonitorFlow from '../src/flows/balanceMonitorFlow.js'
-import runRefresh from '../src/flows/jiliRefreshCommandFlow.js'
+import runRefreshCommandFlow from '../src/flows/refreshCommandFlow.js'
 import tools from '../tools.js'
 
 const HELP_TEXT = [
@@ -96,7 +96,7 @@ const registerJiliCommands = ({
       isProcessing = true
 
       try {
-        const reportText = await runRefresh({
+        const reportText = await runRefreshCommandFlow({
           chatId,
           channelNameList: config.REFRESH_CHANNEL_NAME_LIST,
           jiliContext,
