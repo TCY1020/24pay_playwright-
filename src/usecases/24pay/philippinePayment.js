@@ -89,7 +89,7 @@ const philippinePayment = {
     for (const merchantPayType of merchantPayTypeList) {
       await this.setMerchantPayType({ page, merchantPayType })
       await this.submitSearch({ page })
-      await page.waitForTimeout(2000)
+      await page.waitForTimeout(5000)  //这边等个五秒看数据还会不会跑掉
       const payment = await this.getPayment({ page })
       merchantPayTypePayment[merchantPayType] = payment
     }
