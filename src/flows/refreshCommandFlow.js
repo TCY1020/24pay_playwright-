@@ -51,10 +51,10 @@ const runRefreshCommandFlow = async ({
   const jiliReportText = messageFormat.buildRefreshReportText({ rows })
 
   const upstreamReportText = messageFormat.formatUpstreamBalanceReport({
-    fastPayBalance: tools.formatAmountWithCommas(fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A'),
-    fastPayBlackBalance: tools.formatAmountWithCommas(fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A'),
-    tgPayBalance: tools.formatAmountWithCommas(tgPayBalanceData?.param?.balance ?? 'N/A'),
-    leePayBalance: tools.formatAmountWithCommas(leePayBalanceData?.data?.balance ?? 'N/A'),
+    fastPayBalance: tools.formatAmountWithCommas({ amount: fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
+    fastPayBlackBalance: tools.formatAmountWithCommas({ amount: fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
+    tgPayBalance: tools.formatAmountWithCommas({ amount: tgPayBalanceData?.param?.balance ?? 'N/A' }),
+    leePayBalance: tools.formatAmountWithCommas({ amount: leePayBalanceData?.data?.balance ?? 'N/A' }),
   })
 
 

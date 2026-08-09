@@ -116,14 +116,14 @@ const messageFormat = {
       todayPaymentOrderStats.find(item => item.MerchantNo === '各商户汇总') ??
       todayPaymentOrderStats[0]
     const totalPayAmount = Number(summaryRow?.OrderPayAmount ?? 0)
-    const formattedTotalPayAmount = tools.formatAmountWithCommas(totalPayAmount)
+    const formattedTotalPayAmount = tools.formatAmountWithCommas({ amount: totalPayAmount, maximumFractionDigits: 0 })
     const topMerchantList = Array.isArray(summaryRow?.merchantList)
       ? summaryRow.merchantList.slice(0, 5)
       : []
 
     const topMerchantLines = topMerchantList.map(merchant => {
       const successAmount = Number(merchant?.OrderSuccessAmount ?? 0)
-      const formattedSuccessAmount = tools.formatAmountWithCommas(successAmount)
+      const formattedSuccessAmount = tools.formatAmountWithCommas({ amount: successAmount, maximumFractionDigits: 0 })
       const merchantName = String(merchant?.CompanyName ?? merchant?.MerchantNo ?? '').trim()
 
       return `${merchantName}: ${formattedSuccessAmount}`

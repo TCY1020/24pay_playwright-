@@ -76,7 +76,7 @@ const philippinePayment = {
       : 0
     const payment = Number.parseFloat(String(paymentText).replace(/,/g, '').trim())
 
-    return tools.formatAmountWithCommas(payment)
+    return tools.formatAmountWithCommas({ amount: payment })
   },
 
   async getMerchantPayTypePayment ({ page, merchantNo, merchantPayTypeList, orderStatus, startDate, endDate }) {

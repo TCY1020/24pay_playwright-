@@ -14,18 +14,18 @@ Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主�
 
 | 路徑 | 用途 |
 |------|------|
-| `index.js` | 組裝 config、Telegram、Browser、兩個 context（24pay / jili）、註冊各 flow 與 Telegram 指令 |
+| `index.js` | 主程式入口：組裝 config／Telegram／`BrowserTools`、建立 24pay 與 jili 兩個 context，並將 `browserTools` 注入 24pay 的 WS 轉發與定時報表 flow；最後註冊 Telegram 指令 |
 | `config.js` | 自專案根目錄讀取 `config.json`（`getConfig()`） |
 | `config.json` | 機密與業務參數（勿提交版本庫；勿在對話中貼實際 token／密碼） |
 | `manual.js` | 手動登入工具：`uploadAuthJiliAuthToGce()` 產生並上傳 `jili_auth.json`，`loginAdminJili()` 驗證 admin 登入 |
 | `daily-manual.js` | 每日手動流程入口：先刷新並上傳 jili auth，再執行 admin 登入檢查 |
-| `tools.js` | 共用工具（無 page）：`sleep`、`balanceListFilter`、`getAttayAscendingSort`、UTC+8（`getUtc8Parts`／`getDelayToNextReport`）、`formatAmountWithCommas` |
+| `tools.js` | 共用工具（無 page）：`sleep`、`balanceListFilter`、`getAttayAscendingSort`、UTC+8（`getUtc8Parts`／`getDelayToNextReport`）、`formatAmountWithCommas({ amount, maximumFractionDigits = 2 })` |
 | `sing.js` | Upstream 簽章：`sing.fastPay({ params, key })`（排除空值／`sign` 後排序組字串，MD5 小寫 hex） |
 | `upstreamApi.js` | Upstream HTTP：`getFastPayBalance`、`getTgPayBalance`、`getLeePayBalance`（僅打 API，不含簽章／業務組裝） |
 | `telegram/telegram.js` | `TelegramTools`：polling、`onMessage`、`sendGroupMessage` |
 | `telegram/messageFormat.js` | **所有** Telegram 業務文案集中處（見下方「Telegram 文案」） |
-| `telegram/registerJiliCommands.js` | Jili Telegram 指令註冊（`/start`、`/monitor_on`、`/monitor_off`、`/help`）；指令狀態回覆字串寫在此檔 |
-| `src/infra/browser.js` | `BrowserTools`：`chromium.launch` |
+| `telegram/registerTelegramCommands.js` | Telegram 指令註冊（`/start`、`/monitor_on`、`/monitor_off`、`/help`）；指令狀態回覆字串寫在此檔；執行時仍依賴 `jiliContext`／`jiliPage` |
+| `src/infra/browser.js` | `BrowserTools`：`chromium.launch`（建構參數 `headless`，`index.js` 預設 `true`） |
 | `src/pages/` | 站台頁面操作：`24payLoginPage.js`（TOTP 登入）、`24payTools.js`（`toolBy24pay`：`openSideMenu`／`openThreeLevelSideMenu`／`openTab`）、`jiliLoginPage.js`、`jiliTools.js`（`jiliTools`：登入／導頁／通道選擇／餘額表／批次更新／`getChannelCardCount` 等） |
 | `src/flows/` | 常駐／指令流程：`24payWsForwardFlow`、`24payScheduledReportFlow`、`balanceMonitorFlow`、`refreshCommandFlow` |
 | `src/usecases/24pay/` | 24pay 可重用邏輯：`paymentOrderStats`（代收統計頁操作與取表）、`philippinePayment`（菲律賓支付頁篩選與支付方式金額） |
@@ -42,6 +42,20 @@ npm run dev          # 啟動 index.js（headless browser）
 
 - 主程式要求專案根目錄存在 **`jili_auth.json`**，否則 `ensureJiliAuthState` 會 `process.exit(1)` 並提示先跑 `daily-manual` 產生最新狀態檔。
 - 登入成功判斷已改為「離開登入頁 + `label` 文字包含帳號」的雙條件檢查。
+
+## 主程式啟動（`index.js`）
+
+依序：
+
+1. `getConfig()` + `TelegramTools`，並 `startPolling()`。
+2. `ensureJiliAuthState()` 確認 `jili_auth.json` 存在。
+3. `new BrowserTools({ headless: true })` → `launchBrowser()`（24pay／jili 共用同一個 browser）。
+4. 24pay：`newContext()` → 登入 → 啟動：
+   - `start24payWsForwardFlow({ page, telegramTools, groupChatId, config, browserTools })`（**不** `await`）
+   - `await start24payScheduledReportFlow({ page, telegramTools, groupChatId, browserTools })`
+5. jili：以 `storageState: jili_auth.json` 建 context → `checkJiliLoginPage` → `registerTelegramCommands({ telegramTools, config, jiliContext, jiliPage })`。
+
+注意：`browserTools` 已由 `index.js` 傳入兩個 24pay flow；flow 內若尚未解構使用，多傳入的參數會被忽略。
 
 ## `config.json` 鍵（僅列名稱）
 
@@ -67,7 +81,7 @@ npm run dev          # 啟動 index.js（headless browser）
 
 ## Telegram 文案（`telegram/messageFormat.js`）
 
-業務報表／轉發文案**只**放此檔（default export 物件 `messageFormat`）。指令狀態字串仍在 `registerJiliCommands.js`。
+業務報表／轉發文案**只**放此檔（default export 物件 `messageFormat`）。指令狀態字串仍在 `registerTelegramCommands.js`。
 
 | 方法 | 用途 | 呼叫端 |
 |------|------|--------|
@@ -77,11 +91,11 @@ npm run dev          # 啟動 index.js（headless browser）
 | `extract24payForwardMessage` | 解析 24pay WS payload | `24payWsForwardFlow` |
 | `format24payScheduledReport` | 定時報表全文 | `24payScheduledReportFlow` |
 
-金額千分位一律先經 `tools.formatAmountWithCommas` 再傳入 format 方法。
+金額千分位一律先經 `tools.formatAmountWithCommas({ amount, maximumFractionDigits })` 再傳入 format 方法。`maximumFractionDigits` 預設 `2`（只設上限、不強制補 `.00`）；定時報表的總跑量／前五家成功金額傳 `0`。
 
-## Telegram 指令（`telegram/registerJiliCommands.js`）
+## Telegram 指令（`telegram/registerTelegramCommands.js`）
 
-啟動時**不會**自動跑餘額監控；Jili 相關能力皆由 Telegram 指令觸發：
+啟動時**不會**自動跑餘額監控；批次刷新／餘額監控皆由 Telegram 指令觸發：
 
 | 指令 | 行為 |
 |------|------|
@@ -148,11 +162,13 @@ npm run dev          # 啟動 index.js（headless browser）
 
 ## 24pay WebSocket 轉發（`24payWsForwardFlow`）
 
+- `index.js` 呼叫：`start24payWsForwardFlow({ page, telegramTools, groupChatId, config, browserTools })`。
 - 監聽 page websocket `framereceived`，以 `messageFormat.extract24payForwardMessage` 解析 payload。
 - 有效訊息末尾附加 `NOTIFY_CUSTOMER_SERVICE_LIST` 的 `@` 名單，送到群組。
 
 ## 24pay 定時報表流程（`24payScheduledReportFlow`）
 
+- `index.js` 呼叫：`await start24payScheduledReportFlow({ page, telegramTools, groupChatId, browserTools })`。
 - 啟動時先開兩個頁籤（不立即發報）：
   - `toolBy24pay.openSideMenu` → 代收訂單統計（`PAYMENT_STATS_PAGE.mainMenuId/subMenuId`）
   - `toolBy24pay.openThreeLevelSideMenu` → 菲律賓支付（`PHILIPPINE_PAYMENT_PAGE.mainMenuId/subMenuId/thirdMenuId`）
@@ -166,9 +182,9 @@ npm run dev          # 啟動 index.js（headless browser）
 ### 定時報表文案（`format24payScheduledReport`）
 
 - 參數：`todayPaymentOrderStats`、`merchantPayTypePaymentList`、`notifyUserText`。
-- 開頭：`@通知對象`（可選）+ `MM/DD HH:mm總跑量 xxxxx.xx`；總跑量取「各商户汇总」列（找不到則退回第一列）的 `OrderPayAmount`。
-- `前五家：` 以 `CompanyName`（缺則退回 `MerchantNo`）+ `OrderSuccessAmount` 列出。
-- 其後每位前五商戶一段明細：分隔線 `——————————` + 商戶名 + `GoTyme扫码`／`Maya直连`／`GCash扫码` 金額（來自菲律賓支付頁彙總列 `PayAmount`，已千分位格式化；金額為 0 的支付方式不列出）。
+- 開頭：`@通知對象`（可選）+ `MM/DD HH:mm總跑量 xxxxx`；總跑量取「各商户汇总」列（找不到則退回第一列）的 `OrderPayAmount`，以 `formatAmountWithCommas({ amount, maximumFractionDigits: 0 })` 格式化。
+- `前五家：` 以 `CompanyName`（缺則退回 `MerchantNo`）+ `OrderSuccessAmount` 列出（同樣 `maximumFractionDigits: 0`）。
+- 其後每位前五商戶一段明細：分隔線 `——————————` + 商戶名 + `GoTyme扫码`／`Maya直连`／`GCash扫码` 金額（來自菲律賓支付頁彙總列 `PayAmount`，已千分位格式化、預設最多兩位小數；金額為 0 的支付方式不列出）。
 
 ### 菲律賓支付取數（`philippinePayment`）
 

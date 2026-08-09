@@ -11,10 +11,10 @@ const HELP_TEXT = [
 ].join('\n')
 
 /**
- * 註冊 jili Telegram 指令：
+ * 註冊 Telegram 指令：
  * /start 批次刷新；/monitor_on|/monitor_off 控制餘額監控；/help 顯示說明
  */
-const registerJiliCommands = ({
+const registerTelegramCommands = ({
   telegramTools,
   config,
   jiliContext,
@@ -125,4 +125,4 @@ ${err?.message ?? err ?? '未知錯誤'}
   })
 }
 
-export default registerJiliCommands
+export default registerTelegramCommands

@@ -5,7 +5,7 @@ import { BrowserTools } from './src/infra/browser.js'
 import login24pay from './src/pages/24payLoginPage.js'
 import checkJiliLoginPage from './src/pages/jiliLoginPage.js'
 import ensureJiliAuthState from './src/usecases/jili/ensureJiliAuthState.js'
-import registerJiliCommands from './telegram/registerJiliCommands.js'
+import registerTelegramCommands from './telegram/registerTelegramCommands.js'
 import TelegramTools from './telegram/telegram.js'
 
 // 1) 基礎設定與共用工具初始化
@@ -45,8 +45,8 @@ const jiliContext = await browser.newContext({ storageState: authJsonPathJili })
 const jiliPage = await jiliContext.newPage()
 await checkJiliLoginPage({ page: jiliPage, config })
 
-// 7) jili 指令流程：/start 批次刷新；/monitor_on|/monitor_off 控制餘額監控
-registerJiliCommands({
+// 7) Telegram 指令：/start 批次刷新；/monitor_on|/monitor_off 控制餘額監控
+registerTelegramCommands({
   telegramTools,
   config,
   jiliContext,

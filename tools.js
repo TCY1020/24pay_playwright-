@@ -100,7 +100,7 @@ const tools = {
     return nextReportAtUtc8Ms - utc8Now
   },
 
-  formatAmountWithCommas(amount) {
+  formatAmountWithCommas({amount, maximumFractionDigits = 2}) {
     const numericAmount = typeof amount === 'number'
       ? amount
       : Number(String(amount ?? '').replace(/,/g, ''))
@@ -108,8 +108,7 @@ const tools = {
     if (!Number.isFinite(numericAmount)) return 'N/A'
 
     return numericAmount.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      maximumFractionDigits,
     })
   },
 }
