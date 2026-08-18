@@ -4,6 +4,27 @@ const FORWARDED_MESSAGE_TYPE = 1
 
 const stripAnsi = text => text.replace(/\x1B\[[0-9;]*m/g, '')
 
+const formatThresholdWan = (amount) => {
+  const numericAmount = Number(amount)
+  if (Number.isFinite(numericAmount) && numericAmount % 10000 === 0) {
+    return `${numericAmount / 10000}萬`
+  }
+
+  return tools.formatAmountWithCommas({ amount: numericAmount, maximumFractionDigits: 0 })
+}
+
+const formatBalanceAlertLines = ({ alerts, comparisonText }) => {
+  return alerts.map(item => {
+    const formattedBalance = tools.formatAmountWithCommas({
+      amount: item.balance,
+      maximumFractionDigits: 0,
+    })
+    const formattedThreshold = formatThresholdWan(item.threshold)
+
+    return `${item.label}總餘: ${formattedBalance} 已經${comparisonText}${formattedThreshold}，請注意`
+  })
+}
+
 const formatSuccessNames = ({ list, withCardCount }) => {
   if (withCardCount) {
     return list
@@ -30,6 +51,20 @@ const messageFormat = {
 
   formatJiliBalanceReport({ gotymeBalance = 'N/A' }) {
     return `\nGotyme總餘: ${gotymeBalance}`
+  },
+
+  formatLowBalanceAlert({ alerts = [], notifyUserText = '' }) {
+    const lines = formatBalanceAlertLines({ alerts, comparisonText: '低於' })
+    const body = lines.join('\n')
+
+    return notifyUserText ? `${notifyUserText}\n${body}` : body
+  },
+
+  formatHighBalanceAlert({ alerts = [], notifyUserText = '' }) {
+    const lines = formatBalanceAlertLines({ alerts, comparisonText: '高於' })
+    const body = lines.join('\n')
+
+    return notifyUserText ? `${notifyUserText}\n${body}` : body
   },
 
   buildRefreshReportText({ rows }) {
