@@ -1,27 +1,24 @@
 const UTC8_TIME_ZONE = 'Asia/Taipei'
 
 const tools = {
-  balanceListFilter({ balanceList, lessAmount }) {
-    const filtered = balanceList.filter(item => {
+  filterBalanceList({ balanceList, lessAmount }) {
+    const filteredList = balanceList.filter(item => {
       return item.balance < lessAmount
     })
 
-    return filtered
+    return filteredList
   },
 
   sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms))
   },
 
-  getAttayAscendingSort({ array, key = null }) {
-    let result = []
+  getAscendingSortList({ itemList, key = null }) {
     if (key) {
-      result = [...array].sort((a, b) => Number(a[key]) - Number(b[key]))
-    } else {
-      result = [...array].sort((a, b) => Number(a) - Number(b))
+      return [...itemList].sort((a, b) => Number(a[key]) - Number(b[key]))
     }
 
-    return result
+    return [...itemList].sort((a, b) => Number(a) - Number(b))
   },
 
   getUtc8Parts(date = new Date()) {
@@ -36,8 +33,8 @@ const tools = {
       hourCycle: 'h23',
     })
 
-    const parts = formatter.formatToParts(date)
-    const map = Object.fromEntries(parts.map(part => [part.type, part.value]))
+    const partList = formatter.formatToParts(date)
+    const map = Object.fromEntries(partList.map(part => [part.type, part.value]))
 
     return {
       year: Number(map.year),
@@ -49,7 +46,7 @@ const tools = {
     }
   },
 
-  getDelayToNextReport({ reportHoursUtc8 }) {
+  getDelayToNextReport({ reportHourList }) {
     const now = new Date()
     const utc8NowParts = this.getUtc8Parts(now)
 
@@ -64,7 +61,7 @@ const tools = {
     )
 
     let nextReportAtUtc8Ms = null
-    for (const reportTime of reportHoursUtc8) {
+    for (const reportTime of reportHourList) {
       const [hourText, minuteText] = reportTime.split(':')
       const hour = Number(hourText)
       const minute = Number(minuteText)
@@ -85,7 +82,7 @@ const tools = {
     }
 
     if (!nextReportAtUtc8Ms) {
-      const [firstHourText, firstMinuteText] = reportHoursUtc8[0].split(':')
+      const [firstHourText, firstMinuteText] = reportHourList[0].split(':')
       nextReportAtUtc8Ms = Date.UTC(
         utc8NowParts.year,
         utc8NowParts.month - 1,
@@ -100,7 +97,7 @@ const tools = {
     return nextReportAtUtc8Ms - utc8Now
   },
 
-  formatAmountWithCommas({amount, maximumFractionDigits = 2}) {
+  formatAmountWithCommas({ amount, maximumFractionDigits = 2 }) {
     const numericAmount = typeof amount === 'number'
       ? amount
       : Number(String(amount ?? '').replace(/,/g, ''))

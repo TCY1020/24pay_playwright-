@@ -19,7 +19,7 @@ Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主�
 | `config.json` | 機密與業務參數（勿提交版本庫；勿在對話中貼實際 token／密碼） |
 | `manual.js` | 手動登入工具：`uploadAuthJiliAuthToGce()` 產生並上傳 `jili_auth.json`，`loginAdminJili()` 驗證 admin 登入 |
 | `daily-manual.js` | 每日手動流程入口：先刷新並上傳 jili auth，再執行 admin 登入檢查 |
-| `tools.js` | 共用工具（無 page）：`sleep`、`balanceListFilter`、`getAttayAscendingSort`、UTC+8（`getUtc8Parts`／`getDelayToNextReport`）、`formatAmountWithCommas({ amount, maximumFractionDigits = 2 })` |
+| `tools.js` | 共用工具（無 page）：`sleep`、`filterBalanceList`、`getAscendingSortList`、UTC+8（`getUtc8Parts`／`getDelayToNextReport`）、`formatAmountWithCommas({ amount, maximumFractionDigits = 2 })` |
 | `sing.js` | Upstream 簽章：`sing.fastPay({ params, key })`（排除空值／`sign` 後排序組字串，MD5 小寫 hex） |
 | `upstreamApi.js` | Upstream HTTP：`getFastPayBalance`、`getTgPayBalance`、`getLeePayBalance`（僅打 API，不含簽章／業務組裝） |
 | `telegram/telegram.js` | `TelegramTools`：polling、`onMessage`、`sendGroupMessage` |
@@ -70,10 +70,10 @@ npm run dev          # 啟動 index.js（headless browser）
 - `SECRET_24PAY`、`ACCOUNT_24PAY`、`PASSWORD_24PAY`（24pay + TOTP）
 - `ACCOUNT_JILI`、`ACCOUNT_JILI_ADMIN`（登入成功時 `label` 文字比對用帳號特徵）
 - `GCASH_LOW_BALANCE_THRESHOLD`
-- `REPORT_HOURS_UTC8`（24pay 定時報表排程時段，`HH:mm` 陣列）
+- `REPORT_HOURS_UTC8_LIST`（24pay 定時報表排程時段，`HH:mm` 陣列）
 - `PAYMENT_STATS_PAGE`（24pay 代收訂單統計選單與 tab/iframe 對應 id：`mainMenuId`／`subMenuId`）
 - `PHILIPPINE_PAYMENT_PAGE`（24pay 菲律賓支付三層選單與 tab/iframe 對應 id：`mainMenuId`／`subMenuId`／`thirdMenuId`）
-- `NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID`（定時報表與低餘額警報訊息開頭 @ 通知對象，陣列）
+- `NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID_LIST`（定時報表訊息開頭 @ 通知對象，陣列）
 - `REFRESH_CHANNEL_NAME_LIST`（`/start` 時並行刷新的通道名稱）
 - `MERCHANT_LIST`（`/start` 批次刷新時要處理的商戶集合）
 - `NOTIFY_CUSTOMER_SERVICE_LIST`（24pay websocket 轉發訊息末尾 @ 用戶名）
@@ -138,7 +138,7 @@ npm run dev          # 啟動 index.js（headless browser）
 - 對 `REFRESH_CHANNEL_NAME_LIST` 每個名稱各開一頁，並行 `runJiliChannelProcess`。
 - 若 `MERCHANT_LIST` 非空，另開一頁跑 `runJiliMarchantNameProcess`。
 - `Promise.all` 彙整結果後：
-  1. `messageFormat.buildRefreshReportText({ rows })` 產出刷新段；
+  1. `messageFormat.buildRefreshReportText({ rowList })` 產出刷新段；
   2. `getUpstreamBalances` → `messageFormat.formatUpstreamBalanceReport` 產出 Upstream 段；
   3. 回傳 `${jiliReportText}\n${upstreamReportText}`。
 - 無工作時回「没有需要刷新的通道或商户名稱」（不查 Upstream）。
@@ -178,16 +178,16 @@ npm run dev          # 啟動 index.js（headless browser）
 - 啟動時先開兩個頁籤（不立即發報）：
   - `toolBy24pay.openSideMenu` → 代收訂單統計（`PAYMENT_STATS_PAGE.mainMenuId/subMenuId`）
   - `toolBy24pay.openThreeLevelSideMenu` → 菲律賓支付（`PHILIPPINE_PAYMENT_PAGE.mainMenuId/subMenuId/thirdMenuId`）
-- 依 `REPORT_HOURS_UTC8` 用 `tools.getDelayToNextReport`（UTC+8）計算下一個執行點，`setTimeout` 單次排程，執行完再遞迴排下一次。
+- 依 `REPORT_HOURS_UTC8_LIST` 用 `tools.getDelayToNextReport`（UTC+8）計算下一個執行點，`setTimeout` 單次排程，執行完再遞迴排下一次。
 - 每次執行：
   1. `paymentOrderStats` 以 `toolBy24pay.openTab` 切 tab、填當日 `00:00:00 ~ 23:59:59`、送出查詢、點下拉箭頭、讀主表／明細。
-  2. `sortMerchantBySuccessAmount` 依 `OrderSuccessAmount` 排序明細商戶，取前五家。
+  2. `sortMerchantListBySuccessAmount` 依 `OrderSuccessAmount` 排序明細商戶，取前五家。
   3. 對前五家逐一呼叫 `philippinePayment.getMerchantPayTypePayment`（`orderStatus: Completed`；支付方式：`GoTyme`／`MAYA_DIRECT`／`GCASH_QR`），並附上 `merchantName`（`CompanyName`）。
   4. 文案由 `messageFormat.format24payScheduledReport` 產生後送到 `BALANCE_NOTIFICATION_GROUP_CHAT_ID`。
 
 ### 定時報表文案（`format24payScheduledReport`）
 
-- 參數：`todayPaymentOrderStats`、`merchantPayTypePaymentList`、`notifyUserText`。
+- 參數：`todayPaymentOrderStatList`、`merchantPayTypePaymentList`、`notifyUserText`。
 - 開頭：`@通知對象`（可選）+ `MM/DD HH:mm總跑量 xxxxx`；總跑量取「各商户汇总」列（找不到則退回第一列）的 `OrderPayAmount`，以 `formatAmountWithCommas({ amount, maximumFractionDigits: 0 })` 格式化。
 - `前五家：` 以 `CompanyName`（缺則退回 `MerchantNo`）+ `OrderSuccessAmount` 列出（同樣 `maximumFractionDigits: 0`）。
 - 其後每位前五商戶一段明細：分隔線 `——————————` + 商戶名 + `GoTyme扫码`／`Maya直连`／`GCash扫码` 金額（來自菲律賓支付頁彙總列 `PayAmount`，已千分位格式化、預設最多兩位小數；金額為 0 的支付方式不列出）。
@@ -201,6 +201,12 @@ npm run dev          # 啟動 index.js（headless browser）
 ## 開發慣例
 
 - **模組**：`"type": "module"`，使用 `import`/`export`。
+- **陣列命名**：只要值是陣列，常數、變數、參數、以及回傳陣列的函式名稱，結尾一律用 `List`（`config.json` 鍵用 `_LIST`）。
+  - 變數／參數：`providerList`、`alertList`、`rowList`、`merchantList`
+  - 常數：`PAY_TYPE_LABEL_LIST`、`HELP_LINE_LIST`
+  - 函式：`createProviderList`、`getBalanceList`、`getTodayPaymentOrderStatList`、`filterBalanceList`、`getAscendingSortList`
+  - config 鍵：`REFRESH_CHANNEL_NAME_LIST`、`MERCHANT_LIST`、`NOTIFY_CUSTOMER_SERVICE_LIST`、`REPORT_HOURS_UTC8_LIST`、`NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID_LIST`
+  - 非陣列（物件、數字、字串、Playwright locator）不要加 `List`。
 - **新流程**：優先放在 `src/flows/`。
 - **Telegram 文案**：一律放 `telegram/messageFormat.js`；勿再於 `src/usecases/*/messageFormat*` 新增檔案。
 - **24pay 分層**：
@@ -245,7 +251,7 @@ npm run dev          # 啟動 index.js（headless browser）
   3. 條件未觸發（餘額在低高水位之間）：重置該家發送計數，不換方向。
   4. 某方向水位 `<= 0` → 該方向不監控（例如 `FASTPAY_BLACK` 兩方向均設 0）。
   5. API 取不到數字（null／N/A）→ 該輪略過該家。
-- 通知對象：`NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID`（與定時報表相同）。
+- 通知對象：`NOTIFY_CUSTOMER_SERVICE_LIST`（與 24pay websocket 轉發相同）。
 - 狀態僅在記憶體；重啟後每家重設為「等低水位」。
 - 文案內部用 `formatThresholdWan`：整萬數字顯示為「10萬」，否則千分位數字。
 

@@ -1,13 +1,13 @@
 import { getConfig } from '../../config.js'
+import messageFormat from '../../telegram/messageFormat.js'
 import tools from '../../tools.js'
 import toolBy24pay from '../pages/24payTools.js'
-import messageFormat from '../../telegram/messageFormat.js'
 import paymentOrderStats from '../usecases/24pay/paymentOrderStats.js'
 import philippinePayment from '../usecases/24pay/philippinePayment.js'
 
 const config = getConfig()
-const REPORT_HOURS_UTC8 = config.REPORT_HOURS_UTC8
-const NOTIFY_USER_ID = config.NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID
+const REPORT_HOURS_UTC8_LIST = config.REPORT_HOURS_UTC8_LIST
+const NOTIFY_USER_ID_LIST = config.NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID_LIST
 const PAYMENT_STATS_PAGE = config.PAYMENT_STATS_PAGE
 const PHILIPPINE_PAYMENT_PAGE = config.PHILIPPINE_PAYMENT_PAGE
 
@@ -29,7 +29,7 @@ const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId 
 
   // 設定下次執行時間
   const scheduleNext = () => {
-    const delayMs = tools.getDelayToNextReport({ reportHoursUtc8: REPORT_HOURS_UTC8 })
+    const delayMs = tools.getDelayToNextReport({ reportHourList: REPORT_HOURS_UTC8_LIST })
 
     setTimeout(async () => {
       try {
@@ -40,9 +40,9 @@ const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId 
         await paymentOrderStats.submitPaymentOrderStats({ page })
         await page.waitForTimeout(3000)
         await paymentOrderStats.clickPaymentDownArrowKey({ page })
-        const todayPaymentOrderStats = await paymentOrderStats.getTodayPaymentOrderStats({ page })
-        const sortedTodayPaymentOrderStats = paymentOrderStats.sortMerchantBySuccessAmount({ todayPaymentOrderStats })
-        const top5MerchantList = sortedTodayPaymentOrderStats[0].merchantList.slice(0, 5)
+        const todayPaymentOrderStatList = await paymentOrderStats.getTodayPaymentOrderStatList({ page })
+        const sortedTodayPaymentOrderStatList = paymentOrderStats.sortMerchantListBySuccessAmount({ todayPaymentOrderStatList })
+        const top5MerchantList = sortedTodayPaymentOrderStatList[0].merchantList.slice(0, 5)
         const merchantPayTypePaymentList = []
         for (const merchant of top5MerchantList) {
           const merchantPayTypePayment = await philippinePayment.getMerchantPayTypePayment({
@@ -58,9 +58,9 @@ const start24payScheduledReportFlow = async ({ page, telegramTools, groupChatId 
         }
       
         const text = messageFormat.format24payScheduledReport({
-          todayPaymentOrderStats: sortedTodayPaymentOrderStats,
+          todayPaymentOrderStatList: sortedTodayPaymentOrderStatList,
           merchantPayTypePaymentList,
-          notifyUserText: `@${NOTIFY_USER_ID.join(' @')}`,
+          notifyUserText: `@${NOTIFY_USER_ID_LIST.join(' @')}`,
         })
       
         await telegramTools.sendGroupMessage({ chatId: groupChatId, text })

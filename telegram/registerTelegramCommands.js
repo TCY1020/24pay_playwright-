@@ -2,13 +2,14 @@ import startBalanceMonitorFlow from '../src/flows/balanceMonitorFlow.js'
 import runRefreshCommandFlow from '../src/flows/refreshCommandFlow.js'
 import tools from '../tools.js'
 
-const HELP_TEXT = [
+const HELP_LINE_LIST = [
   '可用指令：',
   '/start - 批次刷新通道',
   '/monitor_on - 啟動餘額監控',
   '/monitor_off - 停止餘額監控',
   '/help - 顯示說明',
-].join('\n')
+]
+const HELP_TEXT = HELP_LINE_LIST.join('\n')
 
 /**
  * 註冊 Telegram 指令：

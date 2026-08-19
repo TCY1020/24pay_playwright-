@@ -1,5 +1,5 @@
-import getUpstreamBalances from '../usecases/upstream/getUpstreamBalances.js'
 import messageFormat from '../../telegram/messageFormat.js'
+import getUpstreamBalances from '../usecases/upstream/getUpstreamBalances.js'
 
 const toNumericBalance = (value) => {
   const numericAmount = typeof value === 'number'
@@ -44,11 +44,11 @@ const createProviderList = ({ balances, lowThresholds, highThresholds }) => {
   ]
 }
 
-const getNextAlerts = ({ providers, providerStates }) => {
-  const lowAlerts = []
-  const highAlerts = []
+const getNextAlertList = ({ providerList, providerStates }) => {
+  const lowAlertList = []
+  const highAlertList = []
 
-  for (const provider of providers) {
+  for (const provider of providerList) {
     const numericBalance = toNumericBalance(provider.balance)
     if (numericBalance == null) continue
 
@@ -60,7 +60,7 @@ const getNextAlerts = ({ providers, providerStates }) => {
       if (lowThreshold == null || lowThreshold <= 0) continue
 
       if (numericBalance < lowThreshold) {
-        lowAlerts.push({ label: provider.label, balance: numericBalance, threshold: lowThreshold })
+        lowAlertList.push({ label: provider.label, balance: numericBalance, threshold: lowThreshold })
         state.sentCount += 1
 
         if (state.sentCount >= NOTIFY_LIMIT) {
@@ -78,7 +78,7 @@ const getNextAlerts = ({ providers, providerStates }) => {
     if (highThreshold == null || highThreshold <= 0) continue
 
     if (numericBalance >= highThreshold) {
-      highAlerts.push({ label: provider.label, balance: numericBalance, threshold: highThreshold })
+      highAlertList.push({ label: provider.label, balance: numericBalance, threshold: highThreshold })
       state.sentCount += 1
 
       if (state.sentCount >= NOTIFY_LIMIT) {
@@ -90,7 +90,7 @@ const getNextAlerts = ({ providers, providerStates }) => {
     }
   }
 
-  return { lowAlerts, highAlerts }
+  return { lowAlertList, highAlertList }
 }
 
 const startLowBalanceAlertFlow = async ({
@@ -102,25 +102,25 @@ const startLowBalanceAlertFlow = async ({
   const intervalMs = config.LOW_BALANCE_ALERT_INTERVAL_MS ?? 5000
   const lowThresholds = config.UPSTREAM_LOW_BALANCE_THRESHOLD ?? {}
   const highThresholds = config.UPSTREAM_HIGH_BALANCE_THRESHOLD ?? {}
-  const notifyUserIds = config.NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID ?? []
-  const notifyUserText = notifyUserIds.length > 0
-    ? `@${notifyUserIds.join(' @')}`
+  const notifyUserIdList = config.NOTIFY_CUSTOMER_SERVICE_LIST ?? []
+  const notifyUserText = notifyUserIdList.length > 0
+    ? `@${notifyUserIdList.join(' @')}`
     : ''
   const providerStates = {}
 
   while (true) {
     try {
       const balances = await getUpstreamBalances({ config })
-      const providers = createProviderList({ balances, lowThresholds, highThresholds })
-      const { lowAlerts, highAlerts } = getNextAlerts({ providers, providerStates })
+      const providerList = createProviderList({ balances, lowThresholds, highThresholds })
+      const { lowAlertList, highAlertList } = getNextAlertList({ providerList, providerStates })
 
-      if (lowAlerts.length > 0) {
-        const text = messageFormat.formatLowBalanceAlert({ alerts: lowAlerts, notifyUserText })
+      if (lowAlertList.length > 0) {
+        const text = messageFormat.formatLowBalanceAlert({ alertList: lowAlertList, notifyUserText })
         await telegramTools.sendGroupMessage({ chatId: groupChatId, text })
       }
 
-      if (highAlerts.length > 0) {
-        const text = messageFormat.formatHighBalanceAlert({ alerts: highAlerts, notifyUserText })
+      if (highAlertList.length > 0) {
+        const text = messageFormat.formatHighBalanceAlert({ alertList: highAlertList, notifyUserText })
         await telegramTools.sendGroupMessage({ chatId: groupChatId, text })
       }
     } catch (err) {

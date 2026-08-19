@@ -13,16 +13,16 @@ const getGcashTooLowBalanceList = async ({ page, lessAmount }) => {
   await jiliTools.selectPageSize({ page, pageSizeIndex: selectMap.pageSize[200] })
 
   await jiliTools.refreshAndWaitForBalanceTable({ page })
-  const rows = await jiliTools.getBalanceList({ page })
-  const totalSummaryRow = rows.pop()
+  const rowList = await jiliTools.getBalanceList({ page })
+  const totalSummaryRow = rowList.pop()
 
-  const lowBalanceList = tools.balanceListFilter({
-    balanceList: rows,
+  const lowBalanceList = tools.filterBalanceList({
+    balanceList: rowList,
     lessAmount,
   })
 
-  const sortedLowBalanceList = tools.getAttayAscendingSort({
-    array: lowBalanceList,
+  const sortedLowBalanceList = tools.getAscendingSortList({
+    itemList: lowBalanceList,
     key: 'balance',
   })
 
@@ -37,9 +37,9 @@ const getGcashTooLowBalanceList = async ({ page, lessAmount }) => {
     balance: tools.formatAmountWithCommas({ amount: totalSummaryRow.balance }),
   }
 
-  const result = [...formattedLowBalanceList, formattedTotalSummaryRow]
+  const resultList = [...formattedLowBalanceList, formattedTotalSummaryRow]
 
-  return result
+  return resultList
 }
 
 export default getGcashTooLowBalanceList

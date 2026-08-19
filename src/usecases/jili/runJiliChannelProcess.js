@@ -62,7 +62,7 @@ const runJiliMarchantNameProcess = async ({ page, merchantList, chatId, telegram
       account,
     })
 
-    let rows = []
+    let rowList = []
     for (const merchant of merchantList) {
       await jiliTools.inputMerchantName({ page, merchantName: merchant })
       await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click()
@@ -75,10 +75,10 @@ const runJiliMarchantNameProcess = async ({ page, merchantList, chatId, telegram
 
       const result = await jiliTools.waitSubmitResultMessage({ page, name: merchant })
       result.isMerchant = true
-      rows.push(result)
+      rowList.push(result)
     }
 
-    return rows
+    return rowList
   } finally {
     await page.close().catch(() => {})
   }

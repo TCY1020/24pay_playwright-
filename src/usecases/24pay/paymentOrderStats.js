@@ -5,7 +5,7 @@ const config = getConfig()
 const PAYMENT_STATS_PAGE = config.PAYMENT_STATS_PAGE
 
 const paymentOrderStats = {
-  async getTodayPaymentOrderStats({ page }) {
+  async getTodayPaymentOrderStatList({ page }) {
     await toolBy24pay.openTab({ page, targetId: PAYMENT_STATS_PAGE.subMenuId })
     await page.waitForLoadState('domcontentloaded')
 
@@ -16,7 +16,7 @@ const paymentOrderStats = {
     const frame = await frameHandle?.contentFrame()
       
     if (!frame) {
-      console.warn('[getTodayPaymentOrderStats] 找不到代收訂單統計 iframe 內容')
+      console.warn('[getTodayPaymentOrderStatList] 找不到代收訂單統計 iframe 內容')
       
       return []
     }
@@ -26,7 +26,7 @@ const paymentOrderStats = {
     await rows.first().waitFor({ state: 'attached', timeout: 12000 })
       
     const rowCount = await rows.count()
-    const todayPaymentOrderStats = []
+    const todayPaymentOrderStatList = []
       
     const toNumber = value => {
       const parsed = Number.parseFloat(String(value ?? '').replace(/,/g, '').trim())
@@ -73,7 +73,7 @@ const paymentOrderStats = {
         })
       }
       
-      todayPaymentOrderStats.push({
+      todayPaymentOrderStatList.push({
         Date: await getFieldValue({ row, field: 'Date' }),
         MerchantNo: await getFieldValue({ row, field: 'MerchantNo' }),
         CompanyName: await getFieldValue({ row, field: 'CompanyName' }),
@@ -91,7 +91,7 @@ const paymentOrderStats = {
       })
     }
       
-    return todayPaymentOrderStats
+    return todayPaymentOrderStatList
   },
   async setPaymentOrderStatsMenuFilter({ page, startDate, endDate }) {
     await toolBy24pay.openTab({ page, targetId: PAYMENT_STATS_PAGE.subMenuId })
@@ -125,12 +125,12 @@ const paymentOrderStats = {
     await downArrowKey.waitFor({ state: 'visible', timeout: 10000 })
     await downArrowKey.click()
   },
-  sortMerchantBySuccessAmount({ todayPaymentOrderStats }) {
-    let merchantList = todayPaymentOrderStats[0].merchantList
+  sortMerchantListBySuccessAmount({ todayPaymentOrderStatList }) {
+    let merchantList = todayPaymentOrderStatList[0].merchantList
     merchantList = merchantList.sort((a, b) => b.OrderSuccessAmount - a.OrderSuccessAmount)
-    todayPaymentOrderStats[0].merchantList = merchantList
+    todayPaymentOrderStatList[0].merchantList = merchantList
 
-    return todayPaymentOrderStats
+    return todayPaymentOrderStatList
   },
 }
 

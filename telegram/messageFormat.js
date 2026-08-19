@@ -13,8 +13,8 @@ const formatThresholdWan = (amount) => {
   return tools.formatAmountWithCommas({ amount: numericAmount, maximumFractionDigits: 0 })
 }
 
-const formatBalanceAlertLines = ({ alerts, comparisonText }) => {
-  return alerts.map(item => {
+const formatBalanceAlertLineList = ({ alertList, comparisonText }) => {
+  return alertList.map(item => {
     const formattedBalance = tools.formatAmountWithCommas({
       amount: item.balance,
       maximumFractionDigits: 0,
@@ -25,9 +25,9 @@ const formatBalanceAlertLines = ({ alerts, comparisonText }) => {
   })
 }
 
-const formatSuccessNames = ({ list, withCardCount }) => {
+const formatSuccessNames = ({ itemList, withCardCount }) => {
   if (withCardCount) {
-    return list
+    return itemList
       .map(item => (
         item.cardCount != null
           ? `${item.name} (${item.cardCount}张)`
@@ -36,7 +36,7 @@ const formatSuccessNames = ({ list, withCardCount }) => {
       .join(',\n')
   }
 
-  return list.map(item => item.name).join(', ')
+  return itemList.map(item => item.name).join(', ')
 }
 
 const messageFormat = {
@@ -53,49 +53,49 @@ const messageFormat = {
     return `\nGotyme總餘: ${gotymeBalance}`
   },
 
-  formatLowBalanceAlert({ alerts = [], notifyUserText = '' }) {
-    const lines = formatBalanceAlertLines({ alerts, comparisonText: '低於' })
-    const body = lines.join('\n')
+  formatLowBalanceAlert({ alertList = [], notifyUserText = '' }) {
+    const lineList = formatBalanceAlertLineList({ alertList, comparisonText: '低於' })
+    const body = lineList.join('\n')
 
     return notifyUserText ? `${notifyUserText}\n${body}` : body
   },
 
-  formatHighBalanceAlert({ alerts = [], notifyUserText = '' }) {
-    const lines = formatBalanceAlertLines({ alerts, comparisonText: '高於' })
-    const body = lines.join('\n')
+  formatHighBalanceAlert({ alertList = [], notifyUserText = '' }) {
+    const lineList = formatBalanceAlertLineList({ alertList, comparisonText: '高於' })
+    const body = lineList.join('\n')
 
     return notifyUserText ? `${notifyUserText}\n${body}` : body
   },
 
-  buildRefreshReportText({ rows }) {
-    if (rows.length === 0) {
+  buildRefreshReportText({ rowList }) {
+    if (rowList.length === 0) {
       return '没有需要刷新的通道或商户名稱'
     }
 
-    const configs = [
+    const configList = [
       {
         name: '通道',
-        list: rows.filter(item => !item.isMerchant),
+        itemList: rowList.filter(item => !item.isMerchant),
       },
       {
         name: '商戶名稱',
-        list: rows.filter(item => item.isMerchant),
+        itemList: rowList.filter(item => item.isMerchant),
       },
     ]
 
-    const hasFailed = rows.some(item => item.message !== 'success')
-    const messageParts = []
+    const hasFailed = rowList.some(item => item.message !== 'success')
+    const messagePartList = []
 
-    for (const { name, list } of configs) {
-      if (list.length === 0) continue
+    for (const { name, itemList } of configList) {
+      if (itemList.length === 0) continue
 
-      const successList = list.filter(item => item.message === 'success')
-      const failedList = list.filter(item => item.message !== 'success')
+      const successList = itemList.filter(item => item.message === 'success')
+      const failedList = itemList.filter(item => item.message !== 'success')
 
       if (successList.length) {
-        messageParts.push(
+        messagePartList.push(
           `刷新『成功』${name}:\n${formatSuccessNames({
-            list: successList,
+            itemList: successList,
             withCardCount: !hasFailed,
           })}`,
         )
@@ -110,17 +110,17 @@ const messageFormat = {
           })
           .join('\n\n')
 
-        messageParts.push(`刷新『失敗』${name}:\n${failedText}`)
+        messagePartList.push(`刷新『失敗』${name}:\n${failedText}`)
       }
     }
 
-    messageParts.push('>>> 皆已刷新完成')
+    messagePartList.push('>>> 皆已刷新完成')
 
     if (hasFailed) {
-      messageParts.push('>>> 失敗的部分請手動刷新')
+      messagePartList.push('>>> 失敗的部分請手動刷新')
     }
 
-    return `\n${messageParts.join('\n\n')}\n`
+    return `\n${messagePartList.join('\n\n')}\n`
   },
 
   extract24payForwardMessage(payload) {
@@ -133,11 +133,11 @@ const messageFormat = {
   },
 
   format24payScheduledReport({
-    todayPaymentOrderStats,
+    todayPaymentOrderStatList,
     merchantPayTypePaymentList = [],
     notifyUserText = '',
   }) {
-    const PAY_TYPE_LABELS = [
+    const PAY_TYPE_LABEL_LIST = [
       { key: 'GoTyme', label: 'GoTyme扫码' },
       { key: 'MAYA_DIRECT', label: 'Maya直连' },
       { key: 'GCASH_QR', label: 'GCash扫码' },
@@ -148,15 +148,15 @@ const messageFormat = {
     const dateText = `${nowParts.month}/${nowParts.day} ${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`
 
     const summaryRow =
-      todayPaymentOrderStats.find(item => item.MerchantNo === '各商户汇总') ??
-      todayPaymentOrderStats[0]
+      todayPaymentOrderStatList.find(item => item.MerchantNo === '各商户汇总') ??
+      todayPaymentOrderStatList[0]
     const totalPayAmount = Number(summaryRow?.OrderPayAmount ?? 0)
     const formattedTotalPayAmount = tools.formatAmountWithCommas({ amount: totalPayAmount, maximumFractionDigits: 0 })
     const topMerchantList = Array.isArray(summaryRow?.merchantList)
       ? summaryRow.merchantList.slice(0, 5)
       : []
 
-    const topMerchantLines = topMerchantList.map(merchant => {
+    const topMerchantLineList = topMerchantList.map(merchant => {
       const successAmount = Number(merchant?.OrderSuccessAmount ?? 0)
       const formattedSuccessAmount = tools.formatAmountWithCommas({ amount: successAmount, maximumFractionDigits: 0 })
       const merchantName = String(merchant?.CompanyName ?? merchant?.MerchantNo ?? '').trim()
@@ -164,16 +164,16 @@ const messageFormat = {
       return `${merchantName}: ${formattedSuccessAmount}`
     })
 
-    const merchantDetailBlocks = merchantPayTypePaymentList.map(merchant => {
+    const merchantDetailBlockList = merchantPayTypePaymentList.map(merchant => {
       const merchantName = String(merchant?.merchantName ?? merchant?.merchantNo ?? '').trim()
-      const payTypeLines = PAY_TYPE_LABELS.flatMap(({ key, label }) => {
+      const payTypeLineList = PAY_TYPE_LABEL_LIST.flatMap(({ key, label }) => {
         const amount = merchant?.[key] ?? '0.00'
         if (Number(amount) === 0) return []
 
         return [`${label} ${amount}`]
       })
 
-      return [DIVIDER, merchantName, ...payTypeLines].join('\n')
+      return [DIVIDER, merchantName, ...payTypeLineList].join('\n')
     })
 
     const titleLine = `${dateText}總跑量 ${formattedTotalPayAmount}`
@@ -182,9 +182,9 @@ const messageFormat = {
     return [
       notifyHeader,
       '前五家：',
-      ...topMerchantLines,
+      ...topMerchantLineList,
       '',
-      ...merchantDetailBlocks,
+      ...merchantDetailBlockList,
     ].join('\n')
   },
 }

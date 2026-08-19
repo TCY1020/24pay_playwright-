@@ -1,6 +1,6 @@
+import messageFormat from '../../telegram/messageFormat.js'
 import getChannelAllAccountBalance from '../usecases/jili/getChannelAllAccountBalance.js'
 import getUpstreamBalances from '../usecases/upstream/getUpstreamBalances.js'
-import messageFormat from '../../telegram/messageFormat.js'
 
 const startBalanceMonitorFlow = async ({
   tools,

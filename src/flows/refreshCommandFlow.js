@@ -1,7 +1,7 @@
-import { runJiliChannelProcess, runJiliMarchantNameProcess } from '../usecases/jili/runJiliChannelProcess.js'
-import getUpstreamBalances from '../usecases/upstream/getUpstreamBalances.js'
 import messageFormat from '../../telegram/messageFormat.js'
 import tools from '../../tools.js'
+import { runJiliChannelProcess, runJiliMarchantNameProcess } from '../usecases/jili/runJiliChannelProcess.js'
+import getUpstreamBalances from '../usecases/upstream/getUpstreamBalances.js'
 
 const runRefreshCommandFlow = async ({
   chatId,
@@ -39,8 +39,8 @@ const runRefreshCommandFlow = async ({
     return '没有需要刷新的通道或商户名稱'
   }
 
-  const results = await Promise.all(channelPromiseList)
-  const rows = results.flatMap(result => Array.isArray(result) ? result : [result])
+  const resultList = await Promise.all(channelPromiseList)
+  const rowList = resultList.flatMap(result => Array.isArray(result) ? result : [result])
 
   const {
     fastPayBalanceData,
@@ -48,7 +48,7 @@ const runRefreshCommandFlow = async ({
     tgPayBalanceData,
     leePayBalanceData,
   } = await getUpstreamBalances({ config })
-  const jiliReportText = messageFormat.buildRefreshReportText({ rows })
+  const jiliReportText = messageFormat.buildRefreshReportText({ rowList })
 
   const upstreamReportText = messageFormat.formatUpstreamBalanceReport({
     fastPayBalance: tools.formatAmountWithCommas({ amount: fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),

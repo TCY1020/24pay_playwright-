@@ -76,9 +76,9 @@ const jiliTools = {
   },
 
   async getBalanceList({ page }) {
-    const result = await page.$$eval(
-      'tbody tr', rows => {
-        return rows
+    const resultList = await page.$$eval(
+      'tbody tr', rowList => {
+        return rowList
           .map(row => {
             const getText = (selector) =>
               row.querySelector(selector)?.innerText?.trim()
@@ -98,7 +98,7 @@ const jiliTools = {
       },
     )
 
-    return result
+    return resultList
   },
 
   async reSearch(page) {
@@ -110,10 +110,10 @@ const jiliTools = {
     const pagerItems = page.locator('.el-pager li.number')
     await page.waitForTimeout(5000)
 
-    const numbers = await pagerItems.allTextContents()
+    const numberList = await pagerItems.allTextContents()
 
     const max = Math.max(
-      ...numbers.map(n => parseInt(n.trim(), 10)),
+      ...numberList.map(n => parseInt(n.trim(), 10)),
     )
 
     return max
@@ -186,12 +186,9 @@ const jiliTools = {
   },
 
   async checkTrOnlyone({ page }) {
-    const trs = await page.locator('tbody tr')
-    if (trs.count() === 1) {
-      return true
-    }
+    const trCount = await page.locator('tbody tr').count()
 
-    return false
+    return trCount === 1
   },
 }
 
