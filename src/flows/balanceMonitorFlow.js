@@ -19,22 +19,16 @@ const startBalanceMonitorFlow = async ({
     isFirstRun = false
 
     try {
-      const {
-        fastPayBalanceData,
-        fastPayBlackBalanceData,
-        tgPayBalanceData,
-        leePayBalanceData,
-      } = await getUpstreamBalances({ config })
+      const balances = await getUpstreamBalances({ config })
 
       const gotymeBalanceData = await getChannelAllAccountBalance({ page: jiliPage, channelName: 'Gotyme' })
       const jiliBalanceReportText = messageFormat.formatJiliBalanceReport({
         gotymeBalance: tools.formatAmountWithCommas({ amount: gotymeBalanceData?.balance ?? 'N/A' }),
       })
       const upstreamBalanceReportText = messageFormat.formatUpstreamBalanceReport({
-        fastPayBalance: tools.formatAmountWithCommas({ amount: fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
-        fastPayBlackBalance: tools.formatAmountWithCommas({ amount: fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
-        tgPayBalance: tools.formatAmountWithCommas({ amount: tgPayBalanceData?.param?.balance ?? 'N/A' }),
-        leePayBalance: tools.formatAmountWithCommas({ amount: leePayBalanceData?.data?.balance ?? 'N/A' }),
+        fastPayBalance: tools.formatAmountWithCommas({ amount: balances.fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
+        fastPayBlackBalance: tools.formatAmountWithCommas({ amount: balances.fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
+        tgPayBalance: tools.formatAmountWithCommas({ amount: balances.tgPayBalanceData?.param?.balance ?? 'N/A' }),
       })
       const message = `${jiliBalanceReportText}\n${upstreamBalanceReportText}`
       await telegramTools.sendGroupMessage({ chatId: groupChatId, text: message })

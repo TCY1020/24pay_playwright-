@@ -44,9 +44,8 @@ const messageFormat = {
     fastPayBalance,
     fastPayBlackBalance,
     tgPayBalance,
-    leePayBalance,
   }) {
-    return `FastPay總餘: ${fastPayBalance}\nFastPay黑名單總餘: ${fastPayBlackBalance}\nTGPay總餘: ${tgPayBalance}\nLeePay總餘: ${leePayBalance}`
+    return `FastPay總餘: ${fastPayBalance}\nFastPay黑名單總餘: ${fastPayBlackBalance}\nTGPay總餘: ${tgPayBalance}`
   },
 
   formatJiliBalanceReport({ gotymeBalance = 'N/A' }) {

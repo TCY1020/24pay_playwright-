@@ -42,19 +42,13 @@ const runRefreshCommandFlow = async ({
   const resultList = await Promise.all(channelPromiseList)
   const rowList = resultList.flatMap(result => Array.isArray(result) ? result : [result])
 
-  const {
-    fastPayBalanceData,
-    fastPayBlackBalanceData,
-    tgPayBalanceData,
-    leePayBalanceData,
-  } = await getUpstreamBalances({ config })
+  const balances = await getUpstreamBalances({ config })
   const jiliReportText = messageFormat.buildRefreshReportText({ rowList })
 
   const upstreamReportText = messageFormat.formatUpstreamBalanceReport({
-    fastPayBalance: tools.formatAmountWithCommas({ amount: fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
-    fastPayBlackBalance: tools.formatAmountWithCommas({ amount: fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
-    tgPayBalance: tools.formatAmountWithCommas({ amount: tgPayBalanceData?.param?.balance ?? 'N/A' }),
-    leePayBalance: tools.formatAmountWithCommas({ amount: leePayBalanceData?.data?.balance ?? 'N/A' }),
+    fastPayBalance: tools.formatAmountWithCommas({ amount: balances.fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
+    fastPayBlackBalance: tools.formatAmountWithCommas({ amount: balances.fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
+    tgPayBalance: tools.formatAmountWithCommas({ amount: balances.tgPayBalanceData?.param?.balance ?? 'N/A' }),
   })
 
 

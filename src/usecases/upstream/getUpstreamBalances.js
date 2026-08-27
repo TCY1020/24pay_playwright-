@@ -25,16 +25,10 @@ const getUpstreamBalances = async ({ config }) => {
     domain: config.TGPAY.DOMAIN,
   })
 
-  const leePayBalanceData = await upstreamApi.getLeePayBalance({
-    token: config.LEEPAY.TOKEN,
-    domain: config.LEEPAY.DOMAIN,
-  })
-
   return {
     fastPayBalanceData,
     fastPayBlackBalanceData,
     tgPayBalanceData,
-    leePayBalanceData,
   }
 }
 

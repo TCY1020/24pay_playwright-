@@ -34,13 +34,6 @@ const createProviderList = ({ balances, lowThresholds, highThresholds }) => {
       lowThreshold: lowThresholds.TGPAY,
       highThreshold: highThresholds.TGPAY,
     },
-    {
-      key: 'LEEPAY',
-      label: 'LeePay',
-      balance: balances.leePayBalanceData?.data?.balance,
-      lowThreshold: lowThresholds.LEEPAY,
-      highThreshold: highThresholds.LEEPAY,
-    },
   ]
 }
 

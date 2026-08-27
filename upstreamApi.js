@@ -25,21 +25,6 @@ const upstreamApi = {
 
     return response.json()
   },
-
-  async getLeePayBalance({ token, domain }) {
-    const url = `${domain}/api/balance/inquiry`
-    const headers = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    }
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-    })
-
-    return response.json()
-  },
 }
 
 export default upstreamApi

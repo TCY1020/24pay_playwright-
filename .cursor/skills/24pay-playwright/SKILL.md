@@ -2,13 +2,13 @@
 name: 24pay-playwright
 description: >-
   24pay Playwright 常駐服務：24pay 網頁登入與 WebSocket 轉發至 Telegram、Jili 後台餘額監控
-  （/monitor_on|/monitor_off）與 /start 批次刷新，並彙整 Upstream（FastPay／TGPay／LeePay）餘額。
+  （/monitor_on|/monitor_off）與 /start 批次刷新，並彙整 Upstream（FastPay／TGPay）餘額。
   使用於修改此 repo、除錯 Playwright 流程、Telegram 通知、config.json 或 auth 狀態檔相關工作時。
 ---
 
 # 24pay Playwright 專案
 
-Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主程式常駐執行兩條線：**24pay**（OTP 登入 + 監聽 websocket 轉發群組 + 定時報表）與 **Jili 後台**（storageState 登入 + Telegram 指令驅動的批次刷新／餘額監控）。餘額相關通知會一併帶 **Upstream API**（FastPay／FastPay 黑名單／TGPay／LeePay）。
+Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主程式常駐執行兩條線：**24pay**（OTP 登入 + 監聽 websocket 轉發群組 + 定時報表）與 **Jili 後台**（storageState 登入 + Telegram 指令驅動的批次刷新／餘額監控）。餘額相關通知會一併帶 **Upstream API**（FastPay／FastPay 黑名單／TGPay）。
 
 ## 目錄與責任
 
@@ -21,7 +21,7 @@ Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主�
 | `daily-manual.js` | 每日手動流程入口：先刷新並上傳 jili auth，再執行 admin 登入檢查 |
 | `tools.js` | 共用工具（無 page）：`sleep`、`filterBalanceList`、`getAscendingSortList`、UTC+8（`getUtc8Parts`／`getDelayToNextReport`）、`formatAmountWithCommas({ amount, maximumFractionDigits = 2 })` |
 | `sing.js` | Upstream 簽章：`sing.fastPay({ params, key })`（排除空值／`sign` 後排序組字串，MD5 小寫 hex） |
-| `upstreamApi.js` | Upstream HTTP：`getFastPayBalance`、`getTgPayBalance`、`getLeePayBalance`（僅打 API，不含簽章／業務組裝） |
+| `upstreamApi.js` | Upstream HTTP：`getFastPayBalance`、`getTgPayBalance`（僅打 API，不含簽章／業務組裝） |
 | `telegram/telegram.js` | `TelegramTools`：polling、`onMessage`、`sendGroupMessage` |
 | `telegram/messageFormat.js` | **所有** Telegram 業務文案集中處（見下方「Telegram 文案」） |
 | `telegram/registerTelegramCommands.js` | Telegram 指令註冊（`/start`、`/monitor_on`、`/monitor_off`、`/help`）；指令狀態回覆字串寫在此檔；執行時仍依賴 `jiliContext`／`jiliPage` |
@@ -30,7 +30,7 @@ Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主�
 | `src/flows/` | 常駐／指令流程：`24payWsForwardFlow`、`24payScheduledReportFlow`、`balanceMonitorFlow`、`refreshCommandFlow`、`lowbalanceAlert` |
 | `src/usecases/24pay/` | 24pay 可重用邏輯：`paymentOrderStats`（代收統計頁操作與取表）、`philippinePayment`（菲律賓支付頁篩選與支付方式金額） |
 | `src/usecases/jili/` | Jili 可重用邏輯：餘額查詢（含可選的低餘額篩選 usecase）、`runJiliChannelProcess`／`runJiliMarchantNameProcess`、auth 狀態檢查等 |
-| `src/usecases/upstream/` | Upstream 組裝：`getUpstreamBalances`（簽章 + 並行打四家 API，回傳原始 JSON） |
+| `src/usecases/upstream/` | Upstream 組裝：`getUpstreamBalances`（簽章 + 並行打三家 API，回傳原始 JSON） |
 
 ## 指令
 
@@ -65,8 +65,8 @@ npm run dev          # 啟動 index.js（headless browser）
 - `TELEGRAM_BOT_TOKEN`、`BALANCE_NOTIFICATION_GROUP_CHAT_ID`
 - `RESEARCH_INTERVAL_MS`（餘額監控輪詢間隔）
 - `LOW_BALANCE_ALERT_INTERVAL_MS`（低餘額警報輪詢間隔，預設 5000ms）
-- `UPSTREAM_LOW_BALANCE_THRESHOLD`：`{ FASTPAY, FASTPAY_BLACK, TGPAY, LEEPAY }`（各家低水位；`0` 代表不監控該方向）
-- `UPSTREAM_HIGH_BALANCE_THRESHOLD`：`{ FASTPAY, FASTPAY_BLACK, TGPAY, LEEPAY }`（各家高水位；`0` 代表不監控該方向）
+- `UPSTREAM_LOW_BALANCE_THRESHOLD`：`{ FASTPAY, FASTPAY_BLACK, TGPAY }`（各家低水位；`0` 代表不監控該方向）
+- `UPSTREAM_HIGH_BALANCE_THRESHOLD`：`{ FASTPAY, FASTPAY_BLACK, TGPAY }`（各家高水位；`0` 代表不監控該方向）
 - `SECRET_24PAY`、`ACCOUNT_24PAY`、`PASSWORD_24PAY`（24pay + TOTP）
 - `ACCOUNT_JILI`、`ACCOUNT_JILI_ADMIN`（登入成功時 `label` 文字比對用帳號特徵）
 - `GCASH_LOW_BALANCE_THRESHOLD`
@@ -81,7 +81,6 @@ npm run dev          # 啟動 index.js（headless browser）
   - `FASTPAY`：`MERCHANT_NO`／`KEY`／`DOMAIN`
   - `FASTPAY_BLACK`：`MERCHANT_NO`／`KEY`／`DOMAIN`
   - `TGPAY`：`PARTNER`／`DOMAIN`
-  - `LEEPAY`：`TOKEN`／`DOMAIN`
 
 ## Telegram 文案（`telegram/messageFormat.js`）
 
@@ -90,7 +89,7 @@ npm run dev          # 啟動 index.js（headless browser）
 | 方法 | 用途 | 呼叫端 |
 |------|------|--------|
 | `formatJiliBalanceReport` | `Gotyme總餘: …` | `balanceMonitorFlow` |
-| `formatUpstreamBalanceReport` | FastPay／黑名單／TGPay／LeePay 總餘 | `balanceMonitorFlow`、`refreshCommandFlow` |
+| `formatUpstreamBalanceReport` | FastPay／黑名單／TGPay 總餘 | `balanceMonitorFlow`、`refreshCommandFlow` |
 | `formatLowBalanceAlert` | 低於水位警報（`XXX總餘: N 已經低於Y萬，請注意`） | `lowbalanceAlert` |
 | `formatHighBalanceAlert` | 高於水位警報（`XXX總餘: N 已經高於Y萬，請注意`） | `lowbalanceAlert` |
 | `buildRefreshReportText` | `/start` 通道／商戶刷新結果 | `refreshCommandFlow` |
@@ -124,12 +123,10 @@ npm run dev          # 啟動 index.js（headless browser）
 - 流程：
   1. FastPay／FastPay 黑名單：`sing.fastPay` 對 `merchantNo` 簽章 → `upstreamApi.getFastPayBalance`（`POST {domain}/api/account/searchAccount`）。
   2. TGPay：`upstreamApi.getTgPayBalance`（`POST {domain}/payment/query/balance`，params 鍵為 `parter`）。
-  3. LeePay：`upstreamApi.getLeePayBalance`（`GET {domain}/api/balance/inquiry`，Bearer token）。
-- 回傳：`{ fastPayBalanceData, fastPayBlackBalanceData, tgPayBalanceData, leePayBalanceData }`（原始 API JSON）。
+- 回傳：`{ fastPayBalanceData, fastPayBlackBalanceData, tgPayBalanceData }`（原始 API JSON）。
 - 金額路徑（flow 內取用）：
   - FastPay／黑名單：`data?.[0]?.totalAmount`
   - TGPay：`param?.balance`
-  - LeePay：`data?.balance`
 - 分層：簽章 → `sing.js`；HTTP → `upstreamApi.js`；組裝 → usecase；文案 → `telegram/messageFormat.js`。
 
 ## 批次刷新（`refreshCommandFlow`）
@@ -160,7 +157,7 @@ npm run dev          # 啟動 index.js（headless browser）
 - 入口：`startBalanceMonitorFlow({ tools, jiliPage, telegramTools, groupChatId, config, shouldStop })`。
 - `shouldStop` 預設 `() => false`；loop 條件為 `while (!shouldStop())`，非首次執行前 `sleep(RESEARCH_INTERVAL_MS)`，sleep 後再檢查一次。
 - 每輪：
-  1. `getUpstreamBalances({ config })` 取四家 Upstream 餘額；
+  1. `getUpstreamBalances({ config })` 取三家 Upstream 餘額；
   2. `getChannelAllAccountBalance` 查 Gotyme；
   3. `formatJiliBalanceReport` + `formatUpstreamBalanceReport` 組字串後送到 `groupChatId`。
 - （歷史／可選）`getGcashTooLowBalanceList`、PayMaya／`gcashwap-2` 查詢仍留在 usecase，目前監控 flow 未使用。
@@ -231,11 +228,11 @@ npm run dev          # 啟動 index.js（headless browser）
 
 ## 除錯檢查清單
 
-1. `config.json` 是否存在且 JSON 合法（含 `PAYMENT_STATS_PAGE`、`PHILIPPINE_PAYMENT_PAGE`、`FASTPAY`／`FASTPAY_BLACK`／`TGPAY`／`LEEPAY`）。
+1. `config.json` 是否存在且 JSON 合法（含 `PAYMENT_STATS_PAGE`、`PHILIPPINE_PAYMENT_PAGE`、`FASTPAY`／`FASTPAY_BLACK`／`TGPAY`）。
 2. `jili_auth.json` 是否存在、是否過期（`jiliTools.goToUrl` 會以畫面文字判斷未登入）。
 3. Telegram：`BALANCE_NOTIFICATION_GROUP_CHAT_ID` 與 bot 是否已在群內；polling 是否與其他程序重複佔用 token。
 4. 餘額監控未通知：確認是否已送 `/monitor_on`；`/monitor_off` 後需等本輪或 sleep 結束才真正停。
-5. Upstream 餘額顯示 `N/A` 或失敗：檢查對應 DOMAIN／簽章 KEY／TOKEN、網路，以及 flow 取用的 JSON 路徑是否仍正確。
+5. Upstream 餘額顯示 `N/A` 或失敗：檢查對應 DOMAIN／簽章 KEY、網路，以及 flow 取用的 JSON 路徑是否仍正確。
 6. 24pay 定時報表若抓到舊資料，優先檢查「開始時間 / 結束時間」欄位是否確實被填入當日區間再送出查詢。
 7. 定時報表缺支付方式明細：確認菲律賓支付頁已由 `openThreeLevelSideMenu` 開啟，且 `philippinePayment` 能切到 `thirdMenuId` tab／iframe。
 8. Playwright：本機除錯可暫時將 `index.js` 的 `BrowserTools({ headless: true })` 改為 `false`（僅限本機，勿把 headed 當預設提交）。
