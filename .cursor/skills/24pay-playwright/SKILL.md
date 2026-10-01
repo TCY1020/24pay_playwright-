@@ -1,20 +1,23 @@
 ---
 name: 24pay-playwright
 description: >-
-  24pay Playwright 常駐服務：24pay 網頁登入與 WebSocket 轉發至 Telegram、Jili 後台餘額監控
-  （/monitor_on|/monitor_off）與 /start 批次刷新，並彙整 Upstream（FastPay／TGPay）餘額。
+  24pay Playwright 常駐服務：Jili 後台餘額監控（/monitor_on|/monitor_off）與 /start
+  批次刷新，並彙整 Upstream（FastPay／TGPay）餘額與低／高水位循環警報。24pay 網頁登入、
+  WebSocket 轉發與定時報表目前在 index.js 停用。
   使用於修改此 repo、除錯 Playwright 流程、Telegram 通知、config.json 或 auth 狀態檔相關工作時。
 ---
 
 # 24pay Playwright 專案
 
-Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主程式常駐執行兩條線：**24pay**（OTP 登入 + 監聽 websocket 轉發群組 + 定時報表）與 **Jili 後台**（storageState 登入 + Telegram 指令驅動的批次刷新／餘額監控）。餘額相關通知會一併帶 **Upstream API**（FastPay／FastPay 黑名單／TGPay）。
+Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主程式目前常駐執行兩條線：**Jili 後台**（storageState 登入 + Telegram 指令驅動的批次刷新／餘額監控）與 **Upstream API**（FastPay／FastPay 黑名單／TGPay）餘額彙整與低／高水位循環警報。
+
+**24pay**（OTP 登入 + websocket 轉發群組 + 定時報表）相關模組仍留在 repo，但 `index.js` 已整段註解停用：啟動時不會開 24pay context、不會登入、也不會跑 WS 轉發與定時報表。Jili／Upstream／Telegram 指令與這條線無共用 page 或狀態，停用不會影響現有業務。
 
 ## 目錄與責任
 
 | 路徑 | 用途 |
 |------|------|
-| `index.js` | 主程式入口：組裝 config／Telegram／`BrowserTools`、建立 24pay 與 jili 兩個 context，並將 `browserTools` 注入 24pay 的 WS 轉發與定時報表 flow；最後註冊 Telegram 指令 |
+| `index.js` | 主程式入口：組裝 config／Telegram／`BrowserTools`、啟動低餘額警報、以 `jili_auth.json` 建 jili context 並註冊 Telegram 指令。24pay 登入／WS 轉發／定時報表目前註解停用 |
 | `config.js` | 自專案根目錄讀取 `config.json`（`getConfig()`） |
 | `config.json` | 機密與業務參數（勿提交版本庫；勿在對話中貼實際 token／密碼） |
 | `manual.js` | 手動登入工具：`uploadAuthJiliAuthToGce()` 產生並上傳 `jili_auth.json`，`loginAdminJili()` 驗證 admin 登入 |
@@ -26,9 +29,9 @@ Node.js（ES modules）+ Playwright + `node-telegram-bot-api` + `otplib`。主�
 | `telegram/messageFormat.js` | **所有** Telegram 業務文案集中處（見下方「Telegram 文案」） |
 | `telegram/registerTelegramCommands.js` | Telegram 指令註冊（`/start`、`/monitor_on`、`/monitor_off`、`/help`）；指令狀態回覆字串寫在此檔；執行時仍依賴 `jiliContext`／`jiliPage` |
 | `src/infra/browser.js` | `BrowserTools`：`chromium.launch`（建構參數 `headless`，`index.js` 預設 `true`） |
-| `src/pages/` | 站台頁面操作：`24payLoginPage.js`（TOTP 登入）、`24payTools.js`（`toolBy24pay`：`openSideMenu`／`openThreeLevelSideMenu`／`openTab`）、`jiliLoginPage.js`、`jiliTools.js`（`jiliTools`：登入／導頁／通道選擇／餘額表／批次更新／`getChannelCardCount` 等） |
-| `src/flows/` | 常駐／指令流程：`24payWsForwardFlow`、`24payScheduledReportFlow`、`balanceMonitorFlow`、`refreshCommandFlow`、`lowbalanceAlert` |
-| `src/usecases/24pay/` | 24pay 可重用邏輯：`paymentOrderStats`（代收統計頁操作與取表）、`philippinePayment`（菲律賓支付頁篩選與支付方式金額） |
+| `src/pages/` | 站台頁面操作：`jiliLoginPage.js`、`jiliTools.js`（`jiliTools`：登入／導頁／通道選擇／餘額表／批次更新／`getChannelCardCount` 等）。24pay 頁面（`24payLoginPage.js`、`24payTools.js`）仍存在，目前未被 `index.js` 載入 |
+| `src/flows/` | 目前會啟動：`balanceMonitorFlow`、`refreshCommandFlow`、`lowbalanceAlert`。未啟動：`24payWsForwardFlow`、`24payScheduledReportFlow` |
+| `src/usecases/24pay/` | 24pay 可重用邏輯（目前僅被未啟動的定時報表 flow 使用）：`paymentOrderStats`、`philippinePayment` |
 | `src/usecases/jili/` | Jili 可重用邏輯：餘額查詢（含可選的低餘額篩選 usecase）、`runJiliChannelProcess`／`runJiliMarchantNameProcess`、auth 狀態檢查等 |
 | `src/usecases/upstream/` | Upstream 組裝：`getUpstreamBalances`（簽章 + 並行打三家 API，回傳原始 JSON） |
 
@@ -50,37 +53,39 @@ npm run dev          # 啟動 index.js（headless browser）
 1. `getConfig()` + `TelegramTools`，並 `startPolling()`。
 2. `startLowBalanceAlertFlow({ tools, telegramTools, groupChatId, config })`（**不** `await`，不依賴 browser／登入，polling 啟動後立即開跑）。
 3. `ensureJiliAuthState()` 確認 `jili_auth.json` 存在。
-4. `new BrowserTools({ headless: true })` → `launchBrowser()`（24pay／jili 共用同一個 browser）。
-5. 24pay：`newContext()` → 登入 → 啟動：
-   - `start24payWsForwardFlow({ page, telegramTools, groupChatId, config, browserTools })`（**不** `await`）
-   - `await start24payScheduledReportFlow({ page, telegramTools, groupChatId, browserTools })`
-6. jili：以 `storageState: jili_auth.json` 建 context → `checkJiliLoginPage` → `registerTelegramCommands({ telegramTools, config, jiliContext, jiliPage })`。
+4. `new BrowserTools({ headless: true })` → `launchBrowser()`（目前僅 jili 使用此 browser）。
+5. jili：以 `storageState: jili_auth.json` 建 context → `checkJiliLoginPage` → `registerTelegramCommands({ telegramTools, config, jiliContext, jiliPage })`。
 
-注意：`browserTools` 已由 `index.js` 傳入兩個 24pay flow；flow 內若尚未解構使用，多傳入的參數會被忽略。
+24pay 啟動段（`login24pay`、`start24payWsForwardFlow`、`start24payScheduledReportFlow`）目前整段註解。先前定時報表是 `await`，會擋住後續 jili 登入；停用後 jili／Telegram 指令會更快就緒。若要恢復 24pay，取消註解即可，與 jili 仍是獨立 context。
 
 ## `config.json` 鍵（僅列名稱）
 
 實際值由部署環境提供；修改程式時對照 `index.js` 與各 flow 取用欄位即可。**勿在對話／skill 範例中貼實際密鑰。**
+
+目前主程式會用到：
 
 - `TELEGRAM_BOT_TOKEN`、`BALANCE_NOTIFICATION_GROUP_CHAT_ID`
 - `RESEARCH_INTERVAL_MS`（餘額監控輪詢間隔）
 - `LOW_BALANCE_ALERT_INTERVAL_MS`（低餘額警報輪詢間隔，預設 5000ms）
 - `UPSTREAM_LOW_BALANCE_THRESHOLD`：`{ FASTPAY, FASTPAY_BLACK, TGPAY }`（各家低水位；`0` 代表不監控該方向）
 - `UPSTREAM_HIGH_BALANCE_THRESHOLD`：`{ FASTPAY, FASTPAY_BLACK, TGPAY }`（各家高水位；`0` 代表不監控該方向）
-- `SECRET_24PAY`、`ACCOUNT_24PAY`、`PASSWORD_24PAY`（24pay + TOTP）
 - `ACCOUNT_JILI`、`ACCOUNT_JILI_ADMIN`（登入成功時 `label` 文字比對用帳號特徵）
 - `GCASH_LOW_BALANCE_THRESHOLD`
-- `REPORT_HOURS_UTC8_LIST`（24pay 定時報表排程時段，`HH:mm` 陣列）
-- `PAYMENT_STATS_PAGE`（24pay 代收訂單統計選單與 tab/iframe 對應 id：`mainMenuId`／`subMenuId`）
-- `PHILIPPINE_PAYMENT_PAGE`（24pay 菲律賓支付三層選單與 tab/iframe 對應 id：`mainMenuId`／`subMenuId`／`thirdMenuId`）
-- `NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID_LIST`（定時報表訊息開頭 @ 通知對象，陣列）
 - `REFRESH_CHANNEL_NAME_LIST`（`/start` 時並行刷新的通道名稱）
 - `MERCHANT_LIST`（`/start` 批次刷新時要處理的商戶集合）
-- `NOTIFY_CUSTOMER_SERVICE_LIST`（24pay websocket 轉發訊息末尾 @ 用戶名）
+- `NOTIFY_CUSTOMER_SERVICE_LIST`（低餘額／高水位警報訊息末尾 @ 用戶名；先前也給 24pay websocket 轉發用）
 - Upstream（由 `getUpstreamBalances` 讀取）：
   - `FASTPAY`：`MERCHANT_NO`／`KEY`／`DOMAIN`
   - `FASTPAY_BLACK`：`MERCHANT_NO`／`KEY`／`DOMAIN`
   - `TGPAY`：`PARTNER`／`DOMAIN`
+
+目前主程式**不會讀取**（僅 24pay 停用線會用；config 可暫留）：
+
+- `SECRET_24PAY`、`ACCOUNT_24PAY`、`PASSWORD_24PAY`（24pay + TOTP）
+- `REPORT_HOURS_UTC8_LIST`（24pay 定時報表排程時段，`HH:mm` 陣列）
+- `PAYMENT_STATS_PAGE`（24pay 代收訂單統計選單與 tab/iframe 對應 id：`mainMenuId`／`subMenuId`）
+- `PHILIPPINE_PAYMENT_PAGE`（24pay 菲律賓支付三層選單與 tab/iframe 對應 id：`mainMenuId`／`subMenuId`／`thirdMenuId`）
+- `NOTIFY_24PAY_SCHEDULED_REPORT_USER_ID_LIST`（定時報表訊息開頭 @ 通知對象，陣列）
 
 ## Telegram 文案（`telegram/messageFormat.js`）
 
@@ -93,8 +98,8 @@ npm run dev          # 啟動 index.js（headless browser）
 | `formatLowBalanceAlert` | 低於水位警報（`XXX總餘: N 已經低於Y萬，請注意`） | `lowbalanceAlert` |
 | `formatHighBalanceAlert` | 高於水位警報（`XXX總餘: N 已經高於Y萬，請注意`） | `lowbalanceAlert` |
 | `buildRefreshReportText` | `/start` 通道／商戶刷新結果 | `refreshCommandFlow` |
-| `extract24payForwardMessage` | 解析 24pay WS payload | `24payWsForwardFlow` |
-| `format24payScheduledReport` | 定時報表全文 | `24payScheduledReportFlow` |
+| `extract24payForwardMessage` | 解析 24pay WS payload | `24payWsForwardFlow`（目前未啟動） |
+| `format24payScheduledReport` | 定時報表全文 | `24payScheduledReportFlow`（目前未啟動） |
 
 金額千分位一律先經 `tools.formatAmountWithCommas({ amount, maximumFractionDigits })` 再傳入 format 方法。`maximumFractionDigits` 預設 `2`（只設上限、不強制補 `.00`）；定時報表的總跑量／前五家成功金額傳 `0`。
 
@@ -115,7 +120,7 @@ npm run dev          # 啟動 index.js（headless browser）
 - `isProcessing`：僅鎖住 `/start`，避免並行兩次刷新。
 - `isMonitorRunning` / `stopMonitor`：控制監控生命週期；`/monitor_on` **不** `await` flow，必須把 `isMonitorRunning = false` 掛在 promise 的 `.finally`（不可用同步 `try/finally`，否則會立刻清旗標，導致 `/monitor_off` 誤判未運行）。
 
-分頁關係：`/start` 在 `jiliContext` 內對每個通道／商戶 `newPage()`；監控使用啟動時建立的那張 `jiliPage`。兩者不同 page，可並跑。
+分頁關係：`/start` 在 `jiliContext` 內對每個通道／商戶 `newPage()`；監控使用啟動時建立的那張 `jiliPage`。兩者不同 page，可並跑。與 24pay 無關。
 
 ## Upstream 餘額（`getUpstreamBalances`）
 
@@ -163,15 +168,17 @@ npm run dev          # 啟動 index.js（headless browser）
 - （歷史／可選）`getGcashTooLowBalanceList`、PayMaya／`gcashwap-2` 查詢仍留在 usecase，目前監控 flow 未使用。
 - 單輪錯誤只 `console.error`，不中斷 loop；停止靠 `shouldStop`（由 `/monitor_off` 驅動）。
 
-## 24pay WebSocket 轉發（`24payWsForwardFlow`）
+## 24pay 流程（目前未啟動）
 
-- `index.js` 呼叫：`start24payWsForwardFlow({ page, telegramTools, groupChatId, config, browserTools })`。
+`index.js` 已註解 `login24pay`、`start24payWsForwardFlow`、`start24payScheduledReportFlow`。下列為模組仍存在時的行為說明，恢復時取消註解即可。
+
+### WebSocket 轉發（`24payWsForwardFlow`）
+
 - 監聽 page websocket `framereceived`，以 `messageFormat.extract24payForwardMessage` 解析 payload。
 - 有效訊息末尾附加 `NOTIFY_CUSTOMER_SERVICE_LIST` 的 `@` 名單，送到群組。
 
-## 24pay 定時報表流程（`24payScheduledReportFlow`）
+### 定時報表（`24payScheduledReportFlow`）
 
-- `index.js` 呼叫：`await start24payScheduledReportFlow({ page, telegramTools, groupChatId, browserTools })`。
 - 啟動時先開兩個頁籤（不立即發報）：
   - `toolBy24pay.openSideMenu` → 代收訂單統計（`PAYMENT_STATS_PAGE.mainMenuId/subMenuId`）
   - `toolBy24pay.openThreeLevelSideMenu` → 菲律賓支付（`PHILIPPINE_PAYMENT_PAGE.mainMenuId/subMenuId/thirdMenuId`）
@@ -206,7 +213,7 @@ npm run dev          # 啟動 index.js（headless browser）
   - 非陣列（物件、數字、字串、Playwright locator）不要加 `List`。
 - **新流程**：優先放在 `src/flows/`。
 - **Telegram 文案**：一律放 `telegram/messageFormat.js`；勿再於 `src/usecases/*/messageFormat*` 新增檔案。
-- **24pay 分層**：
+- **24pay 分層**（模組仍在；目前 `index.js` 未載入）：
   - 頁面操作共用 → `src/pages/24payTools.js`（`toolBy24pay`：`openSideMenu` 兩層、`openThreeLevelSideMenu` 三層、`openTab` 切頁籤）
   - 業務步驟／取數 → `src/usecases/24pay/`（如 `paymentOrderStats`、`philippinePayment`）
   - Telegram 文案 → `telegram/messageFormat.js`
@@ -223,20 +230,19 @@ npm run dev          # 啟動 index.js（headless browser）
   - 組裝 → `src/usecases/upstream/getUpstreamBalances.js`
   - 文案 → `telegram/messageFormat.formatUpstreamBalanceReport`
 - **選擇器**：Jili 端大量依賴 Element UI class（`.el-select`、`tbody tr` 等）；24pay 側邊選單展開用 `:scope > ul.sub-menu` 避免抓到巢狀子選單。改版前端時易碎，改動需實際跑頁驗證。
-- **24pay 登入**：`otplib` 產生一次性碼；失敗時檢查 `SECRET_24PAY` 與網路／頁面載入。
+- **24pay 登入**：目前主程式不走此路徑。若恢復，用 `otplib` 產生一次性碼；失敗時檢查 `SECRET_24PAY` 與網路／頁面載入。
 - **Lint**：`eslint.config.js`；改完可對修改過的檔案跑專案既有 lint 流程（若 CI 有則對齊 CI）。
 
 ## 除錯檢查清單
 
-1. `config.json` 是否存在且 JSON 合法（含 `PAYMENT_STATS_PAGE`、`PHILIPPINE_PAYMENT_PAGE`、`FASTPAY`／`FASTPAY_BLACK`／`TGPAY`）。
+1. `config.json` 是否存在且 JSON 合法（含 `FASTPAY`／`FASTPAY_BLACK`／`TGPAY`）。24pay 專用鍵目前主程式不讀。
 2. `jili_auth.json` 是否存在、是否過期（`jiliTools.goToUrl` 會以畫面文字判斷未登入）。
 3. Telegram：`BALANCE_NOTIFICATION_GROUP_CHAT_ID` 與 bot 是否已在群內；polling 是否與其他程序重複佔用 token。
 4. 餘額監控未通知：確認是否已送 `/monitor_on`；`/monitor_off` 後需等本輪或 sleep 結束才真正停。
 5. Upstream 餘額顯示 `N/A` 或失敗：檢查對應 DOMAIN／簽章 KEY、網路，以及 flow 取用的 JSON 路徑是否仍正確。
-6. 24pay 定時報表若抓到舊資料，優先檢查「開始時間 / 結束時間」欄位是否確實被填入當日區間再送出查詢。
-7. 定時報表缺支付方式明細：確認菲律賓支付頁已由 `openThreeLevelSideMenu` 開啟，且 `philippinePayment` 能切到 `thirdMenuId` tab／iframe。
-8. Playwright：本機除錯可暫時將 `index.js` 的 `BrowserTools({ headless: true })` 改為 `false`（僅限本機，勿把 headed 當預設提交）。
-9. 低餘額警報一直未發：確認 `UPSTREAM_LOW_BALANCE_THRESHOLD` 對應家的值 `> 0`；若已發過 2 次，需等餘額回升到 `UPSTREAM_HIGH_BALANCE_THRESHOLD` 再發 2 次後才會回到等低水位。重啟程式可重置所有狀態。
+6. Playwright：本機除錯可暫時將 `index.js` 的 `BrowserTools({ headless: true })` 改為 `false`（僅限本機，勿把 headed 當預設提交）。
+7. 低餘額警報一直未發：確認 `UPSTREAM_LOW_BALANCE_THRESHOLD` 對應家的值 `> 0`；若已發過 2 次，需等餘額回升到 `UPSTREAM_HIGH_BALANCE_THRESHOLD` 再發 2 次後才會回到等低水位。重啟程式可重置所有狀態。
+8. 群組收不到 24pay WS 轉發或定時報表：屬預期。這兩條線目前在 `index.js` 停用，不是故障。
 
 ## Upstream 低餘額高水位循環警報（`lowbalanceAlert`）
 
@@ -248,7 +254,7 @@ npm run dev          # 啟動 index.js（headless browser）
   3. 條件未觸發（餘額在低高水位之間）：重置該家發送計數，不換方向。
   4. 某方向水位 `<= 0` → 該方向不監控（例如 `FASTPAY_BLACK` 兩方向均設 0）。
   5. API 取不到數字（null／N/A）→ 該輪略過該家。
-- 通知對象：`NOTIFY_CUSTOMER_SERVICE_LIST`（與 24pay websocket 轉發相同）。
+- 通知對象：`NOTIFY_CUSTOMER_SERVICE_LIST`。
 - 狀態僅在記憶體；重啟後每家重設為「等低水位」。
 - 文案內部用 `formatThresholdWan`：整萬數字顯示為「10萬」，否則千分位數字。
 
