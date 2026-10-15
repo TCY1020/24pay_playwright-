@@ -1,7 +1,5 @@
 import tools from '../tools.js'
 
-const FORWARDED_MESSAGE_TYPE = 1
-
 const stripAnsi = text => text.replace(/\x1B\[[0-9;]*m/g, '')
 
 const formatThresholdWan = (amount) => {
@@ -120,71 +118,6 @@ const messageFormat = {
     }
 
     return `\n${messagePartList.join('\n\n')}\n`
-  },
-
-  extract24payForwardMessage(payload) {
-    const cleanedPayload = payload.replace(/\u001e/g, '')
-    const messageObject = JSON.parse(cleanedPayload)
-
-    if (messageObject.type !== FORWARDED_MESSAGE_TYPE) return null
-
-    return messageObject.arguments?.[0] ?? null
-  },
-
-  format24payScheduledReport({
-    todayPaymentOrderStatList,
-    merchantPayTypePaymentList = [],
-    notifyUserText = '',
-  }) {
-    const PAY_TYPE_LABEL_LIST = [
-      { key: 'GoTyme', label: 'GoTyme扫码' },
-      { key: 'MAYA_DIRECT', label: 'Maya直连' },
-      { key: 'GCASH_QR', label: 'GCash扫码' },
-    ]
-    const DIVIDER = '——————————'
-
-    const nowParts = tools.getUtc8Parts()
-    const dateText = `${nowParts.month}/${nowParts.day} ${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`
-
-    const summaryRow =
-      todayPaymentOrderStatList.find(item => item.MerchantNo === '各商户汇总') ??
-      todayPaymentOrderStatList[0]
-    const totalPayAmount = Number(summaryRow?.OrderPayAmount ?? 0)
-    const formattedTotalPayAmount = tools.formatAmountWithCommas({ amount: totalPayAmount, maximumFractionDigits: 0 })
-    const topMerchantList = Array.isArray(summaryRow?.merchantList)
-      ? summaryRow.merchantList.slice(0, 5)
-      : []
-
-    const topMerchantLineList = topMerchantList.map(merchant => {
-      const successAmount = Number(merchant?.OrderSuccessAmount ?? 0)
-      const formattedSuccessAmount = tools.formatAmountWithCommas({ amount: successAmount, maximumFractionDigits: 0 })
-      const merchantName = String(merchant?.CompanyName ?? merchant?.MerchantNo ?? '').trim()
-
-      return `${merchantName}: ${formattedSuccessAmount}`
-    })
-
-    const merchantDetailBlockList = merchantPayTypePaymentList.map(merchant => {
-      const merchantName = String(merchant?.merchantName ?? merchant?.merchantNo ?? '').trim()
-      const payTypeLineList = PAY_TYPE_LABEL_LIST.flatMap(({ key, label }) => {
-        const amount = merchant?.[key] ?? '0.00'
-        if (Number(amount) === 0) return []
-
-        return [`${label} ${amount}`]
-      })
-
-      return [DIVIDER, merchantName, ...payTypeLineList].join('\n')
-    })
-
-    const titleLine = `${dateText}總跑量 ${formattedTotalPayAmount}`
-    const notifyHeader = notifyUserText ? `${notifyUserText}\n${titleLine}` : titleLine
-
-    return [
-      notifyHeader,
-      '前五家：',
-      ...topMerchantLineList,
-      '',
-      ...merchantDetailBlockList,
-    ].join('\n')
   },
 }
 
