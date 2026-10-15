@@ -37,6 +37,12 @@ const formatSuccessNames = ({ itemList, withCardCount }) => {
   return itemList.map(item => item.name).join(', ')
 }
 
+const resolveUncertainChannelLabel = (merchantName, uncertainChannelMap = {}) => {
+  const key = String(merchantName ?? '').toLowerCase()
+
+  return uncertainChannelMap[key] ?? '找不到通道'
+}
+
 const messageFormat = {
   formatUpstreamBalanceReport({
     fastPayBalance,
@@ -120,7 +126,7 @@ const messageFormat = {
     return `\n${messagePartList.join('\n\n')}\n`
   },
 
-  formatMerchantPaymentAmountNotif({ merchantTop5List }) {
+  formatMerchantPaymentAmountNotif({ merchantTop5List, uncertainChannelMap }) {
     let body ="排名前五的商户：\n"
     merchantTop5List.forEach((merchant) => {
       body += `${merchant.memberName}：${tools.formatAmountWithCommas({ amount: merchant.successAmount })}\n`
@@ -130,22 +136,23 @@ const messageFormat = {
 
     for(const item of merchantTop5List) {
       const merchantName = item.memberName
-      const channelName = merchantName.includes('_') ? merchantName.split('_').pop() : merchantName
+      const channelName = merchantName.includes('_') ? merchantName.split('_').pop() : ""
       const successAmount = tools.formatAmountWithCommas({ amount: item.successAmount })
-      if(channelName.toLowerCase() === 'gotyme' || channelName.toLowerCase() === 'tgpay') {
+      if(channelName.toLowerCase() === 'gotyme') {
         body += `${merchantName}\nGoTyme扫码 ${successAmount}\n——————————\n`
       }else if(channelName.toLowerCase() === 'gcash') {
         body += `${merchantName}\nGCas扫码 ${successAmount}\n——————————\n`
       }else if(channelName.toLowerCase() === 'maya') {
         body += `${merchantName}\nMaya直连 ${successAmount}\n——————————\n`
       }else{
-        body += `${merchantName}\n不明通道 ${successAmount}\n——————————\n`
+        const channelText = resolveUncertainChannelLabel(merchantName, uncertainChannelMap)
+        body += `${merchantName}\n${channelText} ${successAmount}\n——————————\n`
       }
     }
 
 
     return body
-  }
+  },
 }
 
 export default messageFormat

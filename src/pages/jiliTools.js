@@ -101,7 +101,7 @@ const jiliTools = {
     return resultList
   },
 
-  async reSearch({page, buttonIndex = 1}) {
+  async reSearch({ page, buttonIndex = 1 }) {
     await page.locator('.el-button.el-button--primary.el-button--default').nth(buttonIndex).click()
     await page.waitForTimeout(2000)
   },
@@ -198,6 +198,7 @@ const jiliTools = {
     
       const toNumber = (text) => {
         const n = Number(String(text).replace(/,/g, '').replace('%', ''))
+
         return Number.isFinite(n) ? n : 0
       }
     
@@ -229,7 +230,7 @@ const jiliTools = {
     await elHeader.locator('input[placeholder="开始日期"]').type(startTime)
     await elHeader.locator('input[placeholder="结束日期"]').type(endTime)
     await page.waitForTimeout(1000)
-  }
+  },
 }
 
 export default jiliTools

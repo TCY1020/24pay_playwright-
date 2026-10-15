@@ -1,12 +1,12 @@
 import { getConfig } from './config.js'
 import startLowBalanceAlertFlow from './src/flows/lowbalanceAlert.js'
+import merchantPaymentAmountNotif from './src/flows/merchantPaymentAmountNotif.js'
 import { BrowserTools } from './src/infra/browser.js'
 import checkJiliLoginPage from './src/pages/jiliLoginPage.js'
 import ensureJiliAuthState from './src/usecases/jili/ensureJiliAuthState.js'
 import registerTelegramCommands from './telegram/registerTelegramCommands.js'
 import TelegramTools from './telegram/telegram.js'
 import tools from './tools.js'
-import merchantPaymentAmountNotif from './src/flows/merchantPaymentAmountNotif.js'
 
 // 1) 基礎設定與共用工具初始化
 const config = getConfig()
@@ -35,7 +35,7 @@ const jiliContext = await browser.newContext({ storageState: authJsonPathJili })
 const jiliPage = await jiliContext.newPage()
 await checkJiliLoginPage({ page: jiliPage, config })
 
-merchantPaymentAmountNotif({ jiliContext,telegramTools, config })
+merchantPaymentAmountNotif({ jiliContext, telegramTools, config })
 
 // 6) Telegram 指令：/start 批次刷新；/monitor_on|/monitor_off 控制餘額監控
 registerTelegramCommands({
