@@ -119,6 +119,33 @@ const messageFormat = {
 
     return `\n${messagePartList.join('\n\n')}\n`
   },
+
+  formatMerchantPaymentAmountNotif({ merchantTop5List }) {
+    let body ="排名前五的商户：\n"
+    merchantTop5List.forEach((merchant) => {
+      body += `${merchant.memberName}：${tools.formatAmountWithCommas({ amount: merchant.successAmount })}\n`
+    })
+
+    body += "\n——————————\n"
+
+    for(const item of merchantTop5List) {
+      const merchantName = item.memberName
+      const channelName = merchantName.includes('_') ? merchantName.split('_').pop() : merchantName
+      const successAmount = tools.formatAmountWithCommas({ amount: item.successAmount })
+      if(channelName.toLowerCase() === 'gotyme' || channelName.toLowerCase() === 'tgpay') {
+        body += `${merchantName}\nGoTyme扫码 ${successAmount}\n——————————\n`
+      }else if(channelName.toLowerCase() === 'gcash') {
+        body += `${merchantName}\nGCas扫码 ${successAmount}\n——————————\n`
+      }else if(channelName.toLowerCase() === 'maya') {
+        body += `${merchantName}\nMaya直连 ${successAmount}\n——————————\n`
+      }else{
+        body += `${merchantName}\n不明通道 ${successAmount}\n——————————\n`
+      }
+    }
+
+
+    return body
+  }
 }
 
 export default messageFormat

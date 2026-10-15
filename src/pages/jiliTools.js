@@ -61,8 +61,8 @@ const jiliTools = {
   },
 
   async selectPageSize({ page, pageSizeIndex }) {
-    const wrappers = page.locator('.el-input__wrapper')
-    const targetInput = wrappers.locator('input[placeholder="请选择"]').nth(2)
+    const scTableEl = page.locator('.scTable-page')
+    const targetInput = scTableEl.locator('input[placeholder="请选择"]').nth(0)
     await targetInput.waitFor({ state: 'visible' })
     await targetInput.click()
     await page.locator('.el-select-dropdown__item', { hasText: pageSizeIndex }).click()
@@ -101,8 +101,8 @@ const jiliTools = {
     return resultList
   },
 
-  async reSearch(page) {
-    await page.locator('.el-button.el-button--primary.el-button--default').nth(1).click()
+  async reSearch({page, buttonIndex = 1}) {
+    await page.locator('.el-button.el-button--primary.el-button--default').nth(buttonIndex).click()
     await page.waitForTimeout(2000)
   },
 
@@ -190,6 +190,46 @@ const jiliTools = {
 
     return trCount === 1
   },
+
+  async getMemberDataList({ page }) {
+    return await page.$$eval('.el-table__body tbody tr.el-table__row', (rows) => {
+      const cellText = (row, index) =>
+        row.querySelectorAll('td')[index]?.querySelector('.cell')?.innerText?.trim() ?? ''
+    
+      const toNumber = (text) => {
+        const n = Number(String(text).replace(/,/g, '').replace('%', ''))
+        return Number.isFinite(n) ? n : 0
+      }
+    
+      return rows.map((row) => {
+        const email = cellText(row, 0)
+        const rateText =
+          row.querySelectorAll('td')[5]?.querySelector('.el-progress__text')?.innerText?.trim() ?? '0'
+    
+        return {
+          memberName: email.split('@')[0] || email,
+          date: cellText(row, 1),
+          manualDeposit: toNumber(cellText(row, 3)),
+          totalOrder: toNumber(cellText(row, 4)),
+          paymentCollectionSuccessRate: toNumber(rateText),
+          totalServiceFee: toNumber(cellText(row, 6)),
+          excessCollectionFee: toNumber(cellText(row, 7)),
+          successAmount: toNumber(cellText(row, 8)),
+          payoutOrder: toNumber(cellText(row, 9)),
+          payoutAmount: toNumber(cellText(row, 10)),
+          payoutFee: toNumber(cellText(row, 11)),
+          disbursementAmount: toNumber(cellText(row, 12)),
+        }
+      })
+    })
+  },
+
+  async inputStartTimeEndTime({ page, startTime, endTime }) {
+    const elHeader = await page.locator('.el-header')
+    await elHeader.locator('input[placeholder="开始日期"]').type(startTime)
+    await elHeader.locator('input[placeholder="结束日期"]').type(endTime)
+    await page.waitForTimeout(1000)
+  }
 }
 
 export default jiliTools

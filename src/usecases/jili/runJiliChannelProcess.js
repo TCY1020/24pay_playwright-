@@ -21,7 +21,7 @@ const runJiliChannelProcess = async ({ page, name, chatId, telegramTools, accoun
       option: selectMap.stateText.OPEN,
     })
 
-    await jiliTools.reSearch(page)
+    await jiliTools.reSearch({page, buttonIndex: 1})
     let status
     const cardCount = await jiliTools.getChannelCardCount({ page })
     while (true) {
