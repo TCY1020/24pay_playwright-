@@ -11,9 +11,10 @@ const merchantPaymentAmountNotif = async ({ jiliContext, telegramTools, config }
     const dalaysMs = tools.getDelayToNextReport({ reportHourList: config.REPORT_HOURS_UTC8_LIST })
     setTimeout(async () => {
       try {
-        const utc8Parts = tools.getUtc8Parts()
-        const startTime = `${utc8Parts.year}-${utc8Parts.month}-${utc8Parts.day}`
-        const endTime = `${utc8Parts.year}-${utc8Parts.month}-${utc8Parts.day}`
+        const nowParts = tools.getUtc8Parts()
+        const startTime = `${nowParts.year}-${nowParts.month}-${nowParts.day}`
+        const endTime = `${nowParts.year}-${nowParts.month}-${nowParts.day}`
+        const nowTime = `${nowParts.month}/${nowParts.day} ${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`
         await jiliTools.inputStartTimeEndTime({ page: jiliPage, startTime, endTime })
         await jiliTools.selectPageSize({ page: jiliPage, pageSizeIndex: map.selectMap.pageSize[500] })
         await jiliTools.reSearch({ page: jiliPage, buttonIndex: 0 })
@@ -30,7 +31,7 @@ const merchantPaymentAmountNotif = async ({ jiliContext, telegramTools, config }
           merchantTop5List,
           uncertainChannelMap: config.UNCERTAIN_CHANNEL_MAP ?? {},
         })
-        const header = `@${config.MERCHANT_PAYMENT_AMOUNT_NOTIF_LIST.join(' @')}\n ${utc8Parts.month}/${utc8Parts.day} ${utc8Parts.hour}:${utc8Parts.minute} 總跑量 ${totalSuccessPaymentAmount}`
+        const header = `@${config.MERCHANT_PAYMENT_AMOUNT_NOTIF_LIST.join(' @')}\n ${nowTime} 總跑量 ${totalSuccessPaymentAmount}`
         const text = `${header}\n\n${body}`
 
         await telegramTools.sendGroupMessage({ chatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID, text })

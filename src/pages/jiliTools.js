@@ -230,6 +230,8 @@ const jiliTools = {
     await elHeader.locator('input[placeholder="开始日期"]').type(startTime)
     await elHeader.locator('input[placeholder="结束日期"]').type(endTime)
     await page.waitForTimeout(1000)
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(5000)
   },
 }
 

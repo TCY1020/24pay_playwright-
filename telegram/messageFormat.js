@@ -43,6 +43,10 @@ const resolveUncertainChannelLabel = (merchantName, uncertainChannelMap = {}) =>
   return uncertainChannelMap[key] ?? '找不到通道'
 }
 
+const filterNonZeroSuccessAmountList = (merchantTop5List) => {
+  return merchantTop5List.filter(item => item.successAmount !== 0)
+}
+
 const messageFormat = {
   formatUpstreamBalanceReport({
     fastPayBalance,
@@ -127,6 +131,7 @@ const messageFormat = {
   },
 
   formatMerchantPaymentAmountNotif({ merchantTop5List, uncertainChannelMap }) {
+    merchantTop5List = filterNonZeroSuccessAmountList(merchantTop5List)
     let body ="排名前五的商户：\n"
     merchantTop5List.forEach((merchant) => {
       body += `${merchant.memberName}：${tools.formatAmountWithCommas({ amount: merchant.successAmount })}\n`
