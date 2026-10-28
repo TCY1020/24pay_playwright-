@@ -25,10 +25,16 @@ const getUpstreamBalances = async ({ config }) => {
     domain: config.TGPAY.DOMAIN,
   })
 
+  const l7PayBalanceData = await upstreamApi.getL7PayBalance({
+    params: { parter: config.L7PAY.PARTNER },
+    domain: config.L7PAY.DOMAIN,
+  })
+
   return {
     fastPayBalanceData,
     fastPayBlackBalanceData,
     tgPayBalanceData,
+    l7PayBalanceData,
   }
 }
 

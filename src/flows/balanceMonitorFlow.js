@@ -29,6 +29,7 @@ const startBalanceMonitorFlow = async ({
         fastPayBalance: tools.formatAmountWithCommas({ amount: balances.fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
         fastPayBlackBalance: tools.formatAmountWithCommas({ amount: balances.fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
         tgPayBalance: tools.formatAmountWithCommas({ amount: balances.tgPayBalanceData?.param?.balance ?? 'N/A' }),
+        l7PayBalance: tools.formatAmountWithCommas({ amount: balances.l7PayBalanceData?.param?.balance ?? 'N/A' }),
       })
       const message = `${jiliBalanceReportText}\n${upstreamBalanceReportText}`
       await telegramTools.sendGroupMessage({ chatId: groupChatId, text: message })

@@ -22,7 +22,7 @@ const createProviderList = ({ balances, lowThresholds, highThresholds }) => {
     },
     {
       key: 'FASTPAY_BLACK',
-      label: 'FastPay黑名單',
+      label: 'FastPay黑名单',
       balance: balances.fastPayBlackBalanceData?.data?.[0]?.totalAmount,
       lowThreshold: lowThresholds.FASTPAY_BLACK,
       highThreshold: highThresholds.FASTPAY_BLACK,
@@ -33,6 +33,13 @@ const createProviderList = ({ balances, lowThresholds, highThresholds }) => {
       balance: balances.tgPayBalanceData?.param?.balance,
       lowThreshold: lowThresholds.TGPAY,
       highThreshold: highThresholds.TGPAY,
+    },
+    {
+      key: 'L7PAY',
+      label: 'L7Pay',
+      balance: balances.l7PayBalanceData?.param?.balance,
+      lowThreshold: lowThresholds.L7PAY,
+      highThreshold: highThresholds.L7PAY,
     },
   ]
 }

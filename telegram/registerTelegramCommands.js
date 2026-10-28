@@ -5,9 +5,9 @@ import tools from '../tools.js'
 const HELP_LINE_LIST = [
   '可用指令：',
   '/start - 批次刷新通道',
-  '/monitor_on - 啟動餘額監控',
-  '/monitor_off - 停止餘額監控',
-  '/help - 顯示說明',
+  '/monitor_on - 启动余额监控',
+  '/monitor_off - 停止余额监控',
+  '/help - 显示说明',
 ]
 const HELP_TEXT = HELP_LINE_LIST.join('\n')
 
@@ -38,14 +38,14 @@ const registerTelegramCommands = ({
 
       if (text === '/monitor_on') {
         if (isMonitorRunning) {
-          await telegramTools.sendGroupMessage({ chatId, text: '餘額監控已在運行中' })
+          await telegramTools.sendGroupMessage({ chatId, text: '余额监控已在运行中' })
 
           return
         }
 
         isMonitorRunning = true
         stopMonitor = false
-        await telegramTools.sendGroupMessage({ chatId, text: '已啟動餘額監控' })
+        await telegramTools.sendGroupMessage({ chatId, text: '已启动余额监控' })
 
         startBalanceMonitorFlow({
           tools,
@@ -63,7 +63,7 @@ const registerTelegramCommands = ({
 
       if (text === '/monitor_off') {
         if (!isMonitorRunning) {
-          await telegramTools.sendGroupMessage({ chatId, text: '餘額監控目前未運行' })
+          await telegramTools.sendGroupMessage({ chatId, text: '余额监控目前未运行' })
 
           return
         }
@@ -71,7 +71,7 @@ const registerTelegramCommands = ({
         stopMonitor = true
         await telegramTools.sendGroupMessage({
           chatId,
-          text: '已送出停止訊號，等待本輪結束後停止',
+          text: '已送出停止信号，等待本轮结束后停止',
         })
 
         return
@@ -88,7 +88,7 @@ const registerTelegramCommands = ({
       if (isProcessing) {
         await telegramTools.sendGroupMessage({
           chatId,
-          text: '正在處理中，請稍後再試',
+          text: '正在处理中，请稍后再试',
         })
 
         return
@@ -115,8 +115,8 @@ const registerTelegramCommands = ({
           chatId,
           text: `
 刷新指令处理失败，请两分钟后重试,如果连续发生超过两次,请自行手动刷新,并等Jason上班时通知他,感谢!
-錯誤碼:
-${err?.message ?? err ?? '未知錯誤'}
+错误码:
+${err?.message ?? err ?? '未知错误'}
 `,
         })
       } finally {

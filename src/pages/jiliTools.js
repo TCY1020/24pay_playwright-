@@ -86,7 +86,7 @@ const jiliTools = {
             let balanceText = getText('.el-table_1_column_6.el-table__cell')
             let accountId = getText('.el-table_1_column_9 .cell span')
             if (name === undefined) return null
-            if (name === '') name = '總共'
+            if (name === '') name = '总共'
 
             return {
               name,

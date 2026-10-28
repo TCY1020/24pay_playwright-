@@ -13,7 +13,7 @@ const getChannelAllAccountBalance = async ({ page, channelName }) => {
   await jiliTools.selectPageSize({ page, pageSizeIndex: selectMap.pageSize[200] })
   await jiliTools.refreshAndWaitForBalanceTable({ page })
   const balanceList = await jiliTools.getBalanceList({ page })
-  const totalSummaryRow = balanceList.find(item => item.name === '總共')
+  const totalSummaryRow = balanceList.find(item => item.name === '总共')
 
   let result = null
 

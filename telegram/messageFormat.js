@@ -5,7 +5,7 @@ const stripAnsi = text => text.replace(/\x1B\[[0-9;]*m/g, '')
 const formatThresholdWan = (amount) => {
   const numericAmount = Number(amount)
   if (Number.isFinite(numericAmount) && numericAmount % 10000 === 0) {
-    return `${numericAmount / 10000}萬`
+    return `${numericAmount / 10000}万`
   }
 
   return tools.formatAmountWithCommas({ amount: numericAmount, maximumFractionDigits: 0 })
@@ -19,7 +19,7 @@ const formatBalanceAlertLineList = ({ alertList, comparisonText }) => {
     })
     const formattedThreshold = formatThresholdWan(item.threshold)
 
-    return `${item.label}總餘: ${formattedBalance} 已經${comparisonText}${formattedThreshold}，請注意`
+    return `${item.label}总余: ${formattedBalance} 已经${comparisonText}${formattedThreshold}，请注意`
   })
 }
 
@@ -52,23 +52,24 @@ const messageFormat = {
     fastPayBalance,
     fastPayBlackBalance,
     tgPayBalance,
+    l7PayBalance,
   }) {
-    return `FastPay總餘: ${fastPayBalance}\nFastPay黑名單總餘: ${fastPayBlackBalance}\nTGPay總餘: ${tgPayBalance}`
+    return `FastPay总余: ${fastPayBalance}\nFastPay黑名单总余: ${fastPayBlackBalance}\nTGPay总余: ${tgPayBalance}\nL7Pay总余: ${l7PayBalance}`
   },
 
   formatJiliBalanceReport({ gotymeBalance = 'N/A' }) {
-    return `\nGotyme總餘: ${gotymeBalance}`
+    return `\nGotyme总余: ${gotymeBalance}`
   },
 
   formatLowBalanceAlert({ alertList = [], notifyUserText = '' }) {
-    const lineList = formatBalanceAlertLineList({ alertList, comparisonText: '低於' })
+    const lineList = formatBalanceAlertLineList({ alertList, comparisonText: '低于' })
     const body = lineList.join('\n')
 
     return notifyUserText ? `${notifyUserText}\n${body}` : body
   },
 
   formatHighBalanceAlert({ alertList = [], notifyUserText = '' }) {
-    const lineList = formatBalanceAlertLineList({ alertList, comparisonText: '高於' })
+    const lineList = formatBalanceAlertLineList({ alertList, comparisonText: '高于' })
     const body = lineList.join('\n')
 
     return notifyUserText ? `${notifyUserText}\n${body}` : body
@@ -76,7 +77,7 @@ const messageFormat = {
 
   buildRefreshReportText({ rowList }) {
     if (rowList.length === 0) {
-      return '没有需要刷新的通道或商户名稱'
+      return '没有需要刷新的通道或商户名称'
     }
 
     const configList = [
@@ -85,7 +86,7 @@ const messageFormat = {
         itemList: rowList.filter(item => !item.isMerchant),
       },
       {
-        name: '商戶名稱',
+        name: '商户名称',
         itemList: rowList.filter(item => item.isMerchant),
       },
     ]
@@ -113,18 +114,18 @@ const messageFormat = {
           .map(item => {
             const errorMsg = stripAnsi(String(item.message))
 
-            return `${item.name}\n錯誤訊息:\n${errorMsg}`
+            return `${item.name}\n错误信息:\n${errorMsg}`
           })
           .join('\n\n')
 
-        messagePartList.push(`刷新『失敗』${name}:\n${failedText}`)
+        messagePartList.push(`刷新『失败』${name}:\n${failedText}`)
       }
     }
 
     messagePartList.push('>>> 皆已刷新完成')
 
     if (hasFailed) {
-      messagePartList.push('>>> 失敗的部分請手動刷新')
+      messagePartList.push('>>> 失败的部分请手动刷新')
     }
 
     return `\n${messagePartList.join('\n\n')}\n`

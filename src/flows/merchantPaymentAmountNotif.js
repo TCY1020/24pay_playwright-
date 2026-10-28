@@ -31,7 +31,7 @@ const merchantPaymentAmountNotif = async ({ jiliContext, telegramTools, config }
           merchantTop5List,
           uncertainChannelMap: config.UNCERTAIN_CHANNEL_MAP ?? {},
         })
-        const header = `@${config.MERCHANT_PAYMENT_AMOUNT_NOTIF_LIST.join(' @')}\n ${nowTime} 總跑量 ${totalSuccessPaymentAmount}`
+        const header = `@${config.MERCHANT_PAYMENT_AMOUNT_NOTIF_LIST.join(' @')}\n ${nowTime} 总跑量 ${totalSuccessPaymentAmount}`
         const text = `${header}\n\n${body}`
 
         await telegramTools.sendGroupMessage({ chatId: config.BALANCE_NOTIFICATION_GROUP_CHAT_ID, text })

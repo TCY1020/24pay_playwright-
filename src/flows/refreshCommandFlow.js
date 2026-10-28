@@ -36,7 +36,7 @@ const runRefreshCommandFlow = async ({
   }
 
   if (channelPromiseList.length === 0) {
-    return '没有需要刷新的通道或商户名稱'
+    return '没有需要刷新的通道或商户名称'
   }
 
   const resultList = await Promise.all(channelPromiseList)
@@ -49,6 +49,7 @@ const runRefreshCommandFlow = async ({
     fastPayBalance: tools.formatAmountWithCommas({ amount: balances.fastPayBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
     fastPayBlackBalance: tools.formatAmountWithCommas({ amount: balances.fastPayBlackBalanceData?.data?.[0]?.totalAmount ?? 'N/A' }),
     tgPayBalance: tools.formatAmountWithCommas({ amount: balances.tgPayBalanceData?.param?.balance ?? 'N/A' }),
+    l7PayBalance: tools.formatAmountWithCommas({ amount: balances.l7PayBalanceData?.param?.balance ?? 'N/A' }),
   })
 
 
