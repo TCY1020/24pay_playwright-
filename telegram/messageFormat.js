@@ -150,7 +150,10 @@ const messageFormat = {
         body += `${merchantName}\nGCas扫码 ${successAmount}\n——————————\n`
       }else if(channelName.toLowerCase() === 'maya') {
         body += `${merchantName}\nMaya直连 ${successAmount}\n——————————\n`
-      }else{
+      }else if(channelName.toLowerCase() === 'qrph') {
+        body += `${merchantName}\nQRPH扫码 ${successAmount}\n——————————\n`
+      }
+      else{
         const channelText = resolveUncertainChannelLabel(merchantName, uncertainChannelMap)
         body += `${merchantName}\n${channelText} ${successAmount}\n——————————\n`
       }
